@@ -1,18 +1,20 @@
+---
 site:
   title: "LB2298: Modernizing Virtualization with Red Hat OpenShift Virtualization and IBM Fusion: A Hands-On Lab"
   start_page: modules::index.adoc
 
 content:
   sources:
-  - url: ./
+  - url: .
     start_path: content
 
 ui:
   bundle:
-    url: https://github.com/rhpds/rhdp_showroom_theme/releases/download/rh-one-2025/ui-bundle.zip
+    url: https://github.com/rhpds/rhdp_showroom_theme/releases/download/rh-summit-2025/ui-bundle.zip
     # url: https://github.com/rhpds/rhdp_showroom_theme/releases/download/patternfly-6/ui-bundle.zip
     snapshot: true
-  supplemental_files: ./supplemental-ui
+  supplemental_files:
+  - path: ./content/supplemental-ui
 
 antora:
   extensions:
