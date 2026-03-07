@@ -2,7 +2,7 @@
 type: showroom
 
 # Set the left column width to 30%
-default_width: 40
+default_width: 30
 # Persist the URL state so browser refresh doesn't reset the UI
 persist_url_state: true
 
@@ -15,3 +15,6 @@ tabs:
   url: 'https://console-openshift-console.${DOMAIN}'
 - name: IBM Fusion
   url: 'https://console-ibm-spectrum-fusion-ns.${DOMAIN}'
+- name: Bastion
+  path: /wetty
+  port: 443
