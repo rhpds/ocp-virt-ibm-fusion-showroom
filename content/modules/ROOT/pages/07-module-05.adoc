@@ -298,7 +298,7 @@ You have successfully explored the OpenShift Virtualization environment and crea
 
 **Next steps:**
 
-Module 2 will cover VM lifecycle management, including CPU and memory configuration, live migration, snapshots, and cloning using IBM Fusion storage.
+You have completed this lab (LB2298).
 
 == Assets needed
 

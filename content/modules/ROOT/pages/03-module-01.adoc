@@ -86,7 +86,7 @@ IBM Fusion provides enterprise-grade storage for your OpenShift cluster. In this
 
 . In the OpenShift console, navigate to **Storage** > **StorageClasses** in the left navigation menu.
 
-. Identify the storage classes provided by IBM Fusion. Look for storage classes with "fusion" in their name or provisioner.
+. Identify the storage classes provided by IBM Fusion. Look for storage classes with "openshift-storage" in their name or provisioner.
 +
 NOTE: IBM Fusion storage classes provide features critical for VM workloads, including ReadWriteMany access modes, snapshots, and cloning.
 
@@ -97,21 +97,32 @@ NOTE: IBM Fusion storage classes provide features critical for VM workloads, inc
 oc get storageclass
 ----
 
+Expected output:
+
+----
+NAME                            PROVISIONER                                   RECLAIMPOLICY   VOLUMEBINDINGMODE      ALLOWVOLUMEEXPANSION   AGE
+[truncated]                     kubernetes.io/no-provisioner                  Delete          WaitForFirstConsumer   false                  5d18h
+ocs-storagecluster-ceph-rbd     openshift-storage.rbd.csi.ceph.com            Delete          Immediate              true                   5d18h
+ocs-storagecluster-ceph-rgw     openshift-storage.ceph.rook.io/bucket         Delete          Immediate              false                  5d18h
+ocs-storagecluster-cephfs       openshift-storage.cephfs.csi.ceph.com         Delete          Immediate              true                   5d18h
+openshift-storage.noobaa.io     openshift-storage.noobaa.io/obc               Delete          Immediate              false                  5d18h
+----
+
 . Examine the details of an IBM Fusion storage class:
 +
 [source,bash]
 ----
-oc get storageclass <fusion-storage-class-name> -o yaml
+oc get storageclass ocs-storagecluster-ceph-rbd -o yaml
 ----
-+
-Replace `<fusion-storage-class-name>` with the actual Fusion storage class name from the previous step.
 
 . Check what persistent volumes are currently provisioned:
 +
 [source,bash]
 ----
-oc get pv
+oc get pv | grep rbd
 ----
+
+=== Verify
 
 . Verify that volume snapshot classes are available for VM snapshots:
 +
@@ -120,22 +131,30 @@ oc get pv
 oc get volumesnapshotclass
 ----
 
-// TODO: Add screenshot
-image::storage-classes-fusion.png[OpenShift StorageClasses page showing IBM Fusion storage classes,link=self,window=blank,width=700,title="IBM Fusion Storage Classes"]
+Expected output:
+----
+NAME                                        DRIVER                                  DELETIONPOLICY   AGE
+ocs-storagecluster-cephfsplugin-snapclass   openshift-storage.cephfs.csi.ceph.com   Delete           5d18h
+ocs-storagecluster-rbdplugin-snapclass      openshift-storage.rbd.csi.ceph.com      Delete           5d18h
+----
 
-=== Verify
-
-Confirm IBM Fusion storage is operational:
-
+. Verify that IBM Fusion storage is operational:
++
 [source,bash]
 ----
-oc get storageclass | grep fusion
+oc get storagecluster -n openshift-storage
 ----
 
-Expected output should show one or more storage classes with an IBM Fusion provisioner.
+Expected output:
+----
+NAME                 AGE     PHASE   EXTERNAL   CREATED AT             VERSION
+ocs-storagecluster   5d18h   Ready              2026-03-12T02:52:50Z   4.18.17
+----
 
-* At least one IBM Fusion storage class is present
-* Volume snapshot classes are available
+Expected output from the two commands above show.
+
+* Two `volumesnapshotclass` are available in your cluster
+* The IBM Fusion Data Foundation cluster is `Ready`
 
 [[exercise-3]]
 == Exercise 3: Explore IBM Fusion Backup and Restore Service
@@ -143,62 +162,34 @@ Expected output should show one or more storage classes with an IBM Fusion provi
 Along IBM Fusion enterprise-grade storage for your OpenShift cluster, it also provides backup and restore servcies for your virtual machgines and applications.
 In this exercise, you will examine the backup and restore service and its configuration.
 
-//TODO - Write the entire section including snapshots
-. In the OpenShift console, navigate to **Storage** > **StorageClasses** in the left navigation menu.
-
-. Identify the storage classes provided by IBM Fusion. Look for storage classes with "fusion" in their name or provisioner.
+. Open the IBM Fusion UI using the application selector at the top of the Red Hat OpenShift Web Console as illustrated below.
 +
-NOTE: IBM Fusion storage classes provide features critical for VM workloads, including ReadWriteMany access modes, snapshots, and cloning.
+image::03-module-01-FusionUI-Selector.png[Open the IBM Fusion UI Web Console,link=self,window=blank,width=700,title="IBM Fusion Web Console Launch"]
 
-. From the command line, list all available storage classes:
+. Once in the IBM Fusion We Console click on the `Services` menu on the left hand side pane as illustrated below.
 +
-[source,bash]
-----
-oc get storageclass
-----
+image::03-module-01-FusionUI-ServiceTab.png[Verify the IBM Fusion Servicdes deployed,link=self,window=blank,width=700,title="IBM Fusion Web Console Service Tab"]
 
-. Examine the details of an IBM Fusion storage class:
+. Click the `Backup & Restore` tile to open the install window for the IBM Fusion Backup & Restore service as illustrated below.
 +
-[source,bash]
-----
-oc get storageclass <fusion-storage-class-name> -o yaml
-----
+image::03-module-01-FusionUI-BnR-Tile.png[Open Backup & Restore Install,link=self,window=blank,width=700,title="IBM Fusion Backup & Restore Service Tile"]
+
+. Click the `Install` button to start the installation process for the service as illustrated below.
 +
-Replace `<fusion-storage-class-name>` with the actual Fusion storage class name from the previous step.
+image::03-module-01-FusionUI-BnR-Install1.png[Start Backup & Restore Install,link=self,window=blank,width=700,title="IBM Fusion Backup & Restore Installation"]
 
-. Check what persistent volumes are currently provisioned:
+. In the drop-down list associated with the `Storage class to be used to deploy the service` field select the value `ocs-storagecluster-ceph-rbd` as illustrated below.
 +
-[source,bash]
-----
-oc get pv
-----
+image::03-module-01-FusionUI-BnR-Install2.png[Select the Storage Class for the Backup & Restore Install,link=self,window=blank,width=700,title="Select IBM Fusion Backup & Restore Service StorageClass"]
 
-. Verify that volume snapshot classes are available for VM snapshots:
+. Initiate the deployment of the service by clicking the `Install` button as illustrated below.
 +
-[source,bash]
-----
-oc get volumesnapshotclass
-----
+image::03-module-01-FusionUI-BnR-Install3.png[Start the Deployment of the Backup & Restore Service,link=self,window=blank,width=700,title="Initiate the Deployment of IBM Fusion Backup & Restore"]
 
-// TODO: Add screenshot
-image::storage-classes-fusion.png[OpenShift StorageClasses page showing IBM Fusion storage classes,link=self,window=blank,width=700,title="IBM Fusion Storage Classes"]
-
-=== Verify
-
-Confirm IBM Fusion storage is operational:
-
-[source,bash]
-----
-oc get storageclass | grep fusion
-----
-
-Expected output should show one or more storage classes with an IBM Fusion provisioner.
-
-* At least one IBM Fusion storage class is present
-* Volume snapshot classes are available
+This completes this part of the lab. The IBM Fusion Backup & Restore functionality will be configured in used in the optional **Module 5**.
 
 [[exercise-4]]
-== Exercise 3: Creating your first virtual machine
+== Exercise 4: Creating your first virtual machine
 
 Now that you understand the environment, it is time to create your first virtual machine using the OpenShift Virtualization console.
 
@@ -305,3 +296,4 @@ Module 2 will cover VM lifecycle management, including CPU and memory configurat
 . `content/modules/ROOT/assets/images/console-virtualization-overview.png` - Screenshot of the OpenShift Virtualization overview dashboard
 . `content/modules/ROOT/assets/images/storage-classes-fusion.png` - Screenshot of StorageClasses page showing IBM Fusion classes
 . `content/modules/ROOT/assets/images/vm-running-console.png` - Screenshot of a running VM with console access
+. `content/modules/ROOT/assets/images/03-module-01-FusionUI-Selector.png` - Screenshot of a running VM with console access
