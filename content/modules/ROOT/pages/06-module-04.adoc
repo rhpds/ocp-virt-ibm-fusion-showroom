@@ -1,4 +1,4 @@
-= Module 1: Exploring the environment
+= Module 4: IBM Fusion Access for SAN
 include::partial$_attributes.adoc[]
 :source-highlighter: rouge
 :toc: macro

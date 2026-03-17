@@ -1,4 +1,4 @@
-= Module 1: Exploring the environment
+= Module 2: VM Lifecycle Management
 include::partial$_attributes.adoc[]
 :source-highlighter: rouge
 :toc: macro

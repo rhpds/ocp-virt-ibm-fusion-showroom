@@ -8,3 +8,11 @@
 ** xref:03-module-01.adoc#exercise-1[Exercise 1: Navigating the OpenShift Console]
 ** xref:03-module-01.adoc#exercise-2[Exercise 2: Exploring IBM Fusion Storage Integration]
 ** xref:03-module-01.adoc#exercise-3[Exercise 3: Creating Your First Virtual Machine]
+
+* xref:04-module-02.adoc[Module 2: VM lifecycle management]
+
+* xref:05-module-03.adoc[Module 3: Workload migration]
+
+* xref:06-module-04.adoc[Module 4: IBM Fusion Access for SAN]
+
+* xref:07-module-05.adoc[Module 2: IBM Fusion Backup & Restore]

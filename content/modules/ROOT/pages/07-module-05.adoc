@@ -1,4 +1,4 @@
-= Module 1: Exploring the environment
+= Module 5: IBM Fusion Backup & Restore
 include::partial$_attributes.adoc[]
 :source-highlighter: rouge
 :toc: macro

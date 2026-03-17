@@ -1,4 +1,4 @@
-= Modernizing Virtualization with Red Hat OpenShift Virtualization and IBM Fusion
+= LB2298 - Modernizing Virtualization with Red Hat OpenShift Virtualization and IBM Fusion
 include::partial$_attributes.adoc[]
 
 Welcome to the Modernizing Virtualization with Red Hat OpenShift Virtualization and IBM Fusion hands-on lab!
@@ -12,6 +12,8 @@ In this workshop, you will:
 * Work with IBM Fusion-backed persistent storage for VM workloads
 * Perform VM lifecycle operations including live migration, snapshots, and cloning
 * Plan and execute workload migrations from legacy virtualization platforms
+* IBM Fusion Access for SAN to leverage your existing SAN infrastructure 
+* Optional - Backup and restore an application using IBM Fusion Recipes
 
 == Who this is for
 
