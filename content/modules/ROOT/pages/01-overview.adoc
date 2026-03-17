@@ -21,6 +21,8 @@ By the end of this workshop, you will have practical skills in:
 * Leveraging IBM Fusion storage classes for persistent VM storage
 * Performing VM lifecycle operations such as live migration, snapshots, and cloning
 * Planning and executing workload migrations from legacy virtualization platforms using the Migration Toolkit for Virtualization
+* Perform backup and restore operations for your virtual machines
+* IBM Fusion Access for SAN to leverage your existing SAN infrastructure
 
 **Technical outcome**: You will have hands-on experience running VM workloads on OpenShift with enterprise storage provided by IBM Fusion.
 
@@ -60,17 +62,25 @@ You should have:
 
 == Workshop modules
 
-**Module 1: Exploring the environment** (~30 minutes)
+**Module 1: Exploring the environment** (~20 minutes)
 
 Tour the OpenShift console, OpenShift Virtualization operator, and IBM Fusion storage integration. Create your first VM from a template.
 
-**Module 2: VM lifecycle management** (~30 minutes)
+**Module 2: VM lifecycle management** (~20 minutes)
 
 Configure VMs with custom resources, work with IBM Fusion-backed storage, and perform live migration, snapshots, and cloning.
 
-**Module 3: Workload migration** (~30 minutes)
+**Module 3: Workload migration** (~25 minutes)
 
 Use the Migration Toolkit for Virtualization to plan and execute a migration from a legacy virtualization platform.
+
+**Module 4: IBM Fusion Access for SAN to leverage your existing SAN infrastructure** (~20 minutes)
+
+Learn how to leverage your existing SAN infrastructure for your virtual machines and applciations (a la VMFS).
+
+**Module 5: Optional - IBM Fusion Backup and Restore Recipes** (If time permits)
+
+Leverage IBM Fusion Backup and Restore services for your applications and virtual machines.
 
 == Common questions
 
