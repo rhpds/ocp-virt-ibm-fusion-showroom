@@ -41,14 +41,24 @@ In this exercise, you will log in to the OpenShift web console and explore the V
 * **Catalog** for creating new VMs from templates
 * **VirtualMachines** listing any existing VMs
 * **Templates** showing available VM templates
-* **Migrations** for tracking live migration operations
+* **InstanceTypes** showing available VM instance types available
+* **Bootable volumes** showing available boot images available
+* **MigrationPolicies** to manage VM migration policies
+* **Checkups** to manage and run network and storage checkup tools
 
-// TODO: Add screenshot
-image::console-virtualization-overview.png[OpenShift Virtualization overview dashboard showing status and navigation tabs,link=self,window=blank,width=700,title="OpenShift Virtualization Overview"]
+image::03-module-01-console-virtualization-overview.png[OpenShift Virtualization overview dashboard showing status and navigation tabs,link=self,window=blank,width=700,title="OpenShift Virtualization Overview"]
 
 === Verify
 
+Using the `Bastion` tab at the top of your browser window as illustrated below.
+
+image::03-module-01-switch-to-bastion-tab.png[Showromm Bastion tab for Command Line Access,link=self,window=blank,width=700,title="Bastion Tab Access"]
+
 Confirm that the OpenShift Virtualization operator is installed and healthy:
+
+TIP: If the bastion tab is not responsive, click the refresh arrow for the tab to restart the corresponding container as illustrated below.
+
+image::03-module-01-refresh-bastion-tab.png[Refresh Bastion Tab if Stale and not Responsive,link=self,window=blank,width=700,title="Bastion Tab Refresh"]
 
 [source,bash]
 ----
@@ -58,8 +68,8 @@ oc get csv -n openshift-cnv
 Expected output:
 
 ----
-NAME                                      DISPLAY                    VERSION   REPLACES   PHASE
-kubevirt-hyperconverged-operator.v4.20.x  OpenShift Virtualization   4.20.x              Succeeded
+NAME                                       DISPLAY                    VERSION   REPLACES                                   PHASE
+kubevirt-hyperconverged-operator.v4.20.8   OpenShift Virtualization   4.20.8    kubevirt-hyperconverged-operator.v4.20.7   Succeeded
 ----
 
 Check that the HyperConverged custom resource is available:
@@ -86,9 +96,26 @@ IBM Fusion provides enterprise-grade storage for your OpenShift cluster. In this
 
 . In the OpenShift console, navigate to **Storage** > **StorageClasses** in the left navigation menu.
 
-. Identify the storage classes provided by IBM Fusion. Look for storage classes with "openshift-storage" in their name or provisioner.
+. Identify the storage classes provided by IBM Fusion. Look for storage classes with `openshift-storage` in the provisioner name.
 +
 NOTE: IBM Fusion storage classes provide features critical for VM workloads, including ReadWriteMany access modes, snapshots, and cloning.
++
+image::03-module-01-console-storageclasses.png[IBM Fusion Storage Classes,link=self,window=blank,width=700,title="Overview of IBM Fusion Storage Classes"]
+
+. In the OpenShift console, navigate to **Storage** > **Data Foundation** in the left navigation menu.
++
+image::03-module-01-console-datafoundation-overview.png[IBM Fusion Integration with Red Hat OpenShift Console,link=self,window=blank,width=700,title="Overview of IBM Fusion Data Foundation"]
+
+. In the OpenShift console, navigate to **Storage** > **Storage Cluster** in the left navigation menu.
++
+image::03-module-01-console-datafoundation-storagecluster.png[IBM Fusion Storage Cluster Overview,link=self,window=blank,width=700,title="Overview of IBM Fusion Storage Cluster"]
++
+TIP: One in the Storage Cluster overview you can look at the specific storage type provided by clicking the specific types of storage as highlighted with a number 2.
++
+* Block and File storage
+* Object storage
+* Storage pools
+* Topology of the storage cluster
 
 . From the command line, list all available storage classes:
 +
@@ -96,16 +123,17 @@ NOTE: IBM Fusion storage classes provide features critical for VM workloads, inc
 ----
 oc get storageclass
 ----
-
++
 Expected output:
-
++
 ----
-NAME                            PROVISIONER                                   RECLAIMPOLICY   VOLUMEBINDINGMODE      ALLOWVOLUMEEXPANSION   AGE
-[truncated]                     kubernetes.io/no-provisioner                  Delete          WaitForFirstConsumer   false                  5d18h
-ocs-storagecluster-ceph-rbd     openshift-storage.rbd.csi.ceph.com            Delete          Immediate              true                   5d18h
-ocs-storagecluster-ceph-rgw     openshift-storage.ceph.rook.io/bucket         Delete          Immediate              false                  5d18h
-ocs-storagecluster-cephfs       openshift-storage.cephfs.csi.ceph.com         Delete          Immediate              true                   5d18h
-openshift-storage.noobaa.io     openshift-storage.noobaa.io/obc               Delete          Immediate              false                  5d18h
+NAME                                         PROVISIONER                             RECLAIMPOLICY   VOLUMEBINDINGMODE      ALLOWVOLUMEEXPANSION   AGE
+gp2-csi                                      ebs.csi.aws.com                         Delete          WaitForFirstConsumer   true                   <age>
+gp3-csi                                      ebs.csi.aws.com                         Delete          WaitForFirstConsumer   true                   <age>
+ocs-storagecluster-ceph-rbd (default)        openshift-storage.rbd.csi.ceph.com      Delete          Immediate              true                   <age>
+ocs-storagecluster-ceph-rbd-virtualization   openshift-storage.rbd.csi.ceph.com      Delete          Immediate              true                   <age>
+ocs-storagecluster-cephfs                    openshift-storage.cephfs.csi.ceph.com   Delete          Immediate              true                   <age>
+openshift-storage.noobaa.io                  openshift-storage.noobaa.io/obc         Delete          Immediate              false                  <age>
 ----
 
 . Examine the details of an IBM Fusion storage class:
@@ -114,13 +142,72 @@ openshift-storage.noobaa.io     openshift-storage.noobaa.io/obc               De
 ----
 oc get storageclass ocs-storagecluster-ceph-rbd -o yaml
 ----
++
+Expected output:
++
+----
+allowVolumeExpansion: true
+apiVersion: storage.k8s.io/v1
+kind: StorageClass
+metadata:
+  annotations:
+    description: Provides RWO Filesystem volumes, and RWO and RWX Block volumes
+    reclaimspace.csiaddons.openshift.io/schedule: '@weekly'
+    storageclass.kubernetes.io/is-default-class: "true"
+  creationTimestamp: "2026-03-20T10:12:00Z"
+  labels:
+    ramendr.openshift.io/storageid: bb43b63b5fa8538c26acca2ba21d1c56
+  name: ocs-storagecluster-ceph-rbd
+  ownerReferences:
+  - apiVersion: ocs.openshift.io/v1alpha1
+    blockOwnerDeletion: true
+    controller: true
+    kind: StorageClient
+    name: ocs-storagecluster
+    uid: dd0c97e4-65dc-425d-8a82-9f329abd827d
+  resourceVersion: "58670"
+  uid: 913f7e1f-57d5-49ee-b672-e1ddcd2916f5
+parameters:
+  clusterID: openshift-storage
+  csi.storage.k8s.io/controller-expand-secret-name: rook-csi-rbd-provisioner
+  csi.storage.k8s.io/controller-expand-secret-namespace: openshift-storage
+  csi.storage.k8s.io/fstype: ext4
+  csi.storage.k8s.io/node-stage-secret-name: rook-csi-rbd-node
+  csi.storage.k8s.io/node-stage-secret-namespace: openshift-storage
+  csi.storage.k8s.io/provisioner-secret-name: rook-csi-rbd-provisioner
+  csi.storage.k8s.io/provisioner-secret-namespace: openshift-storage
+  imageFeatures: layering,deep-flatten,exclusive-lock,object-map,fast-diff
+  imageFormat: "2"
+  pool: ocs-storagecluster-cephblockpool
+provisioner: openshift-storage.rbd.csi.ceph.com
+reclaimPolicy: Delete
+volumeBindingMode: Immediate
+----
 
 . Check what persistent volumes are currently provisioned:
 +
 [source,bash]
 ----
-oc get pv | grep rbd
+oc get pv -o custom-columns="NAME:.metadata.name,SIZE:.spec.capacity.storage,ACCESS MODES:.spec.accessModes[0],STORAGE CLASS:.spec.storageClassName,CLAIM:.spec.claimRef.name"
 ----
++
+Expected output:
++
+----
+NAME                                       SIZE    ACCESS MODES       STORAGE CLASS                 CLAIM
+pvc-011ff938-bc87-4de8-86fe-f874f644aaa1   512Gi   ReadWriteOnce      gp3-csi                       fusion-storage-0-data-0sj2bk
+pvc-1340e310-163d-42ed-9629-b7a89e6c8477   5Gi     ReadWriteOnce      ocs-storagecluster-ceph-rbd   showroom-terminal-lab-user-home
+pvc-1e9cdc8c-9fd3-4751-8c0e-a267fac1e1f4   50Gi    ReadWriteOnce      gp3-csi                       rook-ceph-mon-b
+pvc-4a93e2b0-f504-425f-9dc9-7bedacf75c55   512Gi   ReadWriteOnce      gp3-csi                       fusion-storage-2-data-0wbmsk
+pvc-5e3de127-e914-4b62-a79a-e2a64a33a845   50Gi    ReadWriteOncePod   ocs-storagecluster-ceph-rbd   noobaa-db-pg-cluster-2
+pvc-77e5bcc2-fc07-462f-82fd-05c5eda806f6   50Gi    ReadWriteOnce      ocs-storagecluster-ceph-rbd   keycloak-pgsql-data
+pvc-aa542b60-4433-4c4f-aa4d-b51e03681dcb   50Gi    ReadWriteOnce      gp3-csi                       rook-ceph-mon-a
+pvc-b42c704e-6a58-4823-be5f-f67632e8aef1   50Gi    ReadWriteOncePod   ocs-storagecluster-ceph-rbd   noobaa-db-pg-cluster-1
+pvc-d80f96ec-28e8-4beb-825c-0a34d2858ce5   50Gi    ReadWriteOnce      gp3-csi                       rook-ceph-mon-c
+pvc-f6e7aa59-7ded-4125-9d60-4c2b6bb2fda9   512Gi   ReadWriteOnce      gp3-csi                       fusion-storage-1-data-0z29zj
+----
++
+TIP: Have a look specifically at the one for the IBM Fusion storage class named `ocs-storagecluster-ceph-rbd`
 
 === Verify
 
@@ -130,12 +217,14 @@ oc get pv | grep rbd
 ----
 oc get volumesnapshotclass
 ----
-
++
 Expected output:
++
 ----
 NAME                                        DRIVER                                  DELETIONPOLICY   AGE
-ocs-storagecluster-cephfsplugin-snapclass   openshift-storage.cephfs.csi.ceph.com   Delete           5d18h
-ocs-storagecluster-rbdplugin-snapclass      openshift-storage.rbd.csi.ceph.com      Delete           5d18h
+csi-aws-vsc                                 ebs.csi.aws.com                         Delete           <age>
+ocs-storagecluster-cephfsplugin-snapclass   openshift-storage.cephfs.csi.ceph.com   Delete           <age>
+ocs-storagecluster-rbdplugin-snapclass      openshift-storage.rbd.csi.ceph.com      Delete           <age>
 ----
 
 . Verify that IBM Fusion storage is operational:
@@ -144,17 +233,18 @@ ocs-storagecluster-rbdplugin-snapclass      openshift-storage.rbd.csi.ceph.com  
 ----
 oc get storagecluster -n openshift-storage
 ----
-
++
 Expected output:
++
 ----
-NAME                 AGE     PHASE   EXTERNAL   CREATED AT             VERSION
-ocs-storagecluster   5d18h   Ready              2026-03-12T02:52:50Z   4.18.17
+NAME                 AGE   PHASE   EXTERNAL   CREATED AT             VERSION
+ocs-storagecluster   <age> Ready              <  Date and Time >     4.20.7
 ----
 
 Expected output from the two commands above show.
 
-* Two `volumesnapshotclass` are available in your cluster
-* The IBM Fusion Data Foundation cluster is `Ready`
+* Two `volumesnapshotclass` are available in your cluster for `openshift-storage` drivers
+* The IBM Fusion Data Foundation cluster shows `PHASE` as `Ready`
 
 [[exercise-3]]
 == Exercise 3: Explore IBM Fusion Backup and Restore Service
@@ -166,69 +256,72 @@ In this exercise, you will examine the backup and restore service and its config
 +
 image::03-module-01-FusionUI-Selector.png[Open the IBM Fusion UI Web Console,link=self,window=blank,width=700,title="IBM Fusion Web Console Launch"]
 
-. Once in the IBM Fusion We Console click on the `Services` menu on the left hand side pane as illustrated below.
+TIP: You can also use the Showroom Fusion tab to get access to the IBM Fusion UI as illustrated below.
+
+image::03-module-01-FusionUI-FromShowroomTab.png[Open the IBM Fusion UI Using Shopwroom Tab,link=self,window=blank,width=700,title="Switch to IBM Fusion Showroom Tab"]
+
+. Once in the IBM Fusion Web Console click on the `Services` menu on the left hand side pane as illustrated below.
 +
 image::03-module-01-FusionUI-ServiceTab.png[Verify the IBM Fusion Servicdes deployed,link=self,window=blank,width=700,title="IBM Fusion Web Console Service Tab"]
 
 . Click the `Backup & Restore` tile to open the install window for the IBM Fusion Backup & Restore service as illustrated below.
 +
-image::03-module-01-FusionUI-BnR-Tile.png[Open Backup & Restore Install,link=self,window=blank,width=700,title="IBM Fusion Backup & Restore Service Tile"]
+image::03-module-01-FusionUI-BnR-NewInstall-1.png[Open Backup & Restore Install,link=self,window=blank,width=700,title="IBM Fusion Backup & Restore Service Tile"]
 
 . Click the `Install` button to start the installation process for the service as illustrated below.
 +
-image::03-module-01-FusionUI-BnR-Install1.png[Start Backup & Restore Install,link=self,window=blank,width=700,title="IBM Fusion Backup & Restore Installation"]
+image::03-module-01-FusionUI-BnR-NewInstall-2.png[Start Backup & Restore Install,link=self,window=blank,width=700,title="IBM Fusion Backup & Restore Installation"]
 
 . In the drop-down list associated with the `Storage class to be used to deploy the service` field select the value `ocs-storagecluster-ceph-rbd` as illustrated below.
 +
-image::03-module-01-FusionUI-BnR-Install2.png[Select the Storage Class for the Backup & Restore Install,link=self,window=blank,width=700,title="Select IBM Fusion Backup & Restore Service StorageClass"]
+image::03-module-01-FusionUI-BnR-NewInstall-3.png[Select the Storage Class for the Backup & Restore Install,link=self,window=blank,width=700,title="Select IBM Fusion Backup & Restore Service StorageClass"]
 
 . Initiate the deployment of the service by clicking the `Install` button as illustrated below.
 +
-image::03-module-01-FusionUI-BnR-Install3.png[Start the Deployment of the Backup & Restore Service,link=self,window=blank,width=700,title="Initiate the Deployment of IBM Fusion Backup & Restore"]
+image::03-module-01-FusionUI-BnR-NewInstall-4.png[Start the Deployment of the Backup & Restore Service,link=self,window=blank,width=700,title="Initiate the Deployment of IBM Fusion Backup & Restore"]
 
-This completes this part of the lab. The IBM Fusion Backup & Restore functionality will be configured in used in the optional **Module 5**.
+. The IBM Fusion Backup & Restore Service is not being installed as illustrated below.
++
+image::03-module-01-FusionUI-BnR-NewInstall-5.png[Deployment of the Backup & Restore Service started,link=self,window=blank,width=700,title="IBM Fusion Backup & Restore is being installed"]
+
+This completes this part of the lab. The IBM Fusion Backup & Restore functionality will be configured and used in the optional **Module 5**.
 
 [[exercise-4]]
 == Exercise 4: Creating your first virtual machine
 
 Now that you understand the environment, it is time to create your first virtual machine using the OpenShift Virtualization console.
 
-. In the OpenShift console, navigate to **Virtualization** > **Catalog**.
-
-. Browse the available VM templates. You should see templates for common operating systems including:
+. In the OpenShift console, navigate to **Virtualization** > **Catalog**. Select **Red Hat Enterprise Linux 9 VM** as illustrated below.
 +
-* Red Hat Enterprise Linux
-* CentOS Stream
-* Fedora
-* Microsoft Windows
-
-. Select a **Red Hat Enterprise Linux** template (for example, **Red Hat Enterprise Linux 9 VM**).
-
-. Click **Quick create VirtualMachine** to accept the default configuration, or click **Customize VirtualMachine** to adjust settings.
+image::03-module-01-console-virtualization-createvm-1b.png[Create virtual machine,link=self,window=blank,width=700,title="Red Hat OpenShift Virtualization Catalog"]
 +
-NOTE: For this exercise, use **Customize VirtualMachine** so you can review the configuration options.
+TIP: The catalog can be customized post Red Hat OpenShift Virtualization deployment. Visit the **Templates** tab for existing predefined templates.
 
-. On the customization page, review the following settings:
+. Scroll down and set the following numbered settings:
 +
-* **Name**: Enter a descriptive name, for example `rhel9-test-vm`
-* **Namespace/Project**: Select or create a project for your VM
-* **Storage**: Note the storage class used for the boot disk. Verify it uses an IBM Fusion storage class
-* **CPU and Memory**: Review the default allocation (typically 1 CPU, 2 GiB memory)
+* **CPU and Memory**: Review the default allocation (typically 1 CPU, 2 GiB memory) (item `1`)
+* **Name**: Enter a descriptive name (item `2`), for example `rhel9-test-vm` as illustrated
+* **Storage**: Choose the storage class (item `3`) for the boot disk (`ocs-storagecluster-ceph-rbd-virtualization`). This is an IBM Fusion storage class
++
+image::03-module-01-console-virtualization-createvm-2b.png[Customize VM parameters,link=self,window=blank,width=700,title="Customize VM"]
++
+TIP: To create your VM in a different namespace simply select the correct one using the namespace selector in the Red Hat OpenShift console
++
+TIP: Use the checkbox just above the **Create Virtual Machine** button if you do not wish to start the VM automatically.
 
 . Click **Create VirtualMachine** to start the VM creation process.
 
-. After creation, click **Start** if the VM does not start automatically.
-
-. Wait for the VM status to change from **Starting** to **Running**. This may take a few minutes as the boot source is provisioned.
+. Wait for the VM status to change from **Starting** to **Running** as illustrated below (Item `1`). This may take a few minutes as the boot source is provisioned.
++
+image::03-module-01-console-virtualization-createvm-3b.png[VM is in Running state,link=self,window=blank,width=700,title="Running VM"]
 
 . Once the VM is running, click the **Console** tab to access the VM console directly from the browser.
 
-// TODO: Add screenshot
-image::vm-running-console.png[OpenShift Virtualization showing a running RHEL 9 VM with console access,link=self,window=blank,width=700,title="Running Virtual Machine with Console Access"]
+image::03-module-01-console-virtualization-createvm-4b.png[VM Console Tab Access,link=self,window=blank,width=700,title="Accessing the VM Console"]
 
 === Verify
 
-Confirm your VM is running from the command line:
+Switch to the `Bastion` tab in your Web browser. Confirm your VM is running from the command line:
 
 [source,bash]
 ----
@@ -238,25 +331,32 @@ oc get vmi -A
 Expected output:
 
 ----
-NAMESPACE       NAME            AGE   PHASE     IP              NODENAME
-<project>       rhel9-test-vm   2m    Running   10.x.x.x       worker-node-x
+NAMESPACE   NAME            AGE   PHASE     IP             NODENAME                                  READY
+default     rhel9-test-vm   <age> Running   10.x.x.x       ip-<AWS_IP>.us-east-2.compute.internal    True
 ----
 
 Check the VM details:
 
 [source,bash]
 ----
-oc describe vm rhel9-test-vm -n <project>
+oc describe vm rhel9-test-vm -n default
 ----
 
-Verify the persistent volume claim was created with IBM Fusion storage:
+Verify the persistent volume claim was created with IBM Fusion storage class `ocs-storagecluster-ceph-rbd-virtualization`:
 
 [source,bash]
 ----
-oc get pvc -n <project>
+oc get pvc -n default
 ----
 
-* VM status shows "Running"
+Expected output:
+
+----
+NAME                   STATUS   VOLUME                                     CAPACITY   ACCESS MODES   STORAGECLASS                                 VOLUMEATTRIBUTESCLASS   AGE
+rhel9-test-vm-volume   Bound    pvc-<UUID>                                 30Gi       RWX            ocs-storagecluster-ceph-rbd-virtualization   <unset>                 <age>
+----
+
+* VM status shows `Running`
 * A persistent volume claim exists for the VM boot disk
 * The PVC uses an IBM Fusion storage class
 
@@ -293,7 +393,23 @@ Module 2 will cover VM lifecycle management, including CPU and memory configurat
 
 == Assets needed
 
-. `content/modules/ROOT/assets/images/console-virtualization-overview.png` - Screenshot of the OpenShift Virtualization overview dashboard
-. `content/modules/ROOT/assets/images/storage-classes-fusion.png` - Screenshot of StorageClasses page showing IBM Fusion classes
-. `content/modules/ROOT/assets/images/vm-running-console.png` - Screenshot of a running VM with console access
-. `content/modules/ROOT/assets/images/03-module-01-FusionUI-Selector.png` - Screenshot of a running VM with console access
+. `content/modules/ROOT/assets/images/03-module-01-console-virtualization-overview.png` - Screenshot of the OpenShift Virtualization overview dashboard
+. `content/modules/ROOT/assets/images/03-module-01-switch-to-bastion-tab.png` - Switching to the Bastion tab
+. `content/modules/ROOT/assets/images/03-module-01-refresh-bastion-tab.png` - Refreshing the Bastion tab
+. `content/modules/ROOT/assets/images/03-module-01-console-storageclasses.png` - IBM Fusion Storage classes
+. `content/modules/ROOT/assets/images/03-module-01-console-datafoundation-overview.png` - IBM Fusion Data Foundation Overview
+. `content/modules/ROOT/assets/images/03-module-01-console-datafoundation-storagecluster.png` - IBM Fusion storage cluster details
+. `content/modules/ROOT/assets/images/03-module-01-FusionUI-Selector.png` - Accessing IBM Fusion web console from OpenShift console
+. `content/modules/ROOT/assets/images/03-module-01-FusionUI-FromShowroomTab.png` - Accessing IBM Fusion web console from showroom tab
+. `content/modules/ROOT/assets/images/03-module-01-FusionUI-ServiceTab.png` - IBM Fusion Services tab
+. `content/modules/ROOT/assets/images/03-module-01-FusionUI-BnR-NewInstall-1.png` - IBM Fusion Backup and Restore Install Step 1
+. `content/modules/ROOT/assets/images/03-module-01-FusionUI-BnR-NewInstall-2.png` - IBM Fusion Backup and Restore Install Step 2
+. `content/modules/ROOT/assets/images/03-module-01-FusionUI-BnR-NewInstall-3.png` - IBM Fusion Backup and Restore Install Step 3
+. `content/modules/ROOT/assets/images/03-module-01-FusionUI-BnR-NewInstall-4.png` - IBM Fusion Backup and Restore Install Step 4
+. `content/modules/ROOT/assets/images/03-module-01-FusionUI-BnR-NewInstall-5.png` - IBM Fusion Backup and Restore Install Step 5
+. `content/modules/ROOT/assets/images/03-module-01-console-virtualization-createvm-1b.png` - Create virtual machine from VM catalog
+. `content/modules/ROOT/assets/images/03-module-01-console-virtualization-createvm-2b.png` - Customize virtual machine
+. `content/modules/ROOT/assets/images/03-module-01-console-virtualization-createvm-3b.png` - Wait for vm to enter Running state
+. `content/modules/ROOT/assets/images/03-module-01-console-virtualization-createvm-4b.png` - Access VM console
+
+
