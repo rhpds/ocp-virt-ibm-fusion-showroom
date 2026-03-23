@@ -74,11 +74,7 @@ Configure VMs with custom resources, work with IBM Fusion-backed storage, and pe
 
 Use the Migration Toolkit for Virtualization to plan and execute a migration from a legacy virtualization platform.
 
-**Module 4: IBM Fusion Access for SAN to leverage your existing SAN infrastructure** (~20 minutes)
-
-Learn how to leverage your existing SAN infrastructure for your virtual machines and applciations (a la VMFS).
-
-**Module 5: Optional - IBM Fusion Backup and Restore Recipes** (If time permits)
+**Module 4: Optional - IBM Fusion Backup and Restore Recipes** (If time permits)
 
 Leverage IBM Fusion Backup and Restore services for your applications and virtual machines.
 
