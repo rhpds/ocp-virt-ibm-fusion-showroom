@@ -1,4 +1,4 @@
-= Module 4: IBM Fusion Access for SAN
+= Module 4: IBM Fusion Backup and Restore
 include::partial$_attributes.adoc[]
 :source-highlighter: rouge
 :toc: macro
@@ -6,299 +6,64 @@ include::partial$_attributes.adoc[]
 
 Modernizing virtualization starts with understanding the platform. Before you can migrate workloads or build new VMs, you need to know what tools are available, how they fit together, and how storage integrates with compute.
 
-In this module, you will explore the OpenShift Virtualization environment, understand the IBM Fusion storage integration, and create your first virtual machine.
+In this module, you will explore the IBM Backup and Restore functionality for your containerized applications as well as for your virtual machines.
 
 == Learning objectives
 
 By the end of this module, you will be able to:
 
-* Navigate the OpenShift Virtualization console and identify key components
-* Understand how IBM Fusion provides persistent storage for VM workloads
-* Create a virtual machine from a pre-configured template
-* Verify VM status and access the VM console
+* Configure IBM Fusion Backup and Restore
+* Navigate the IBM Fusion Backup and Restore web console and its key configuration elements
+* Backup and restore a Red Hat OpenShift virtual machine
+* Backup and restore a Red Hat OpenShift conatinerized application
 
 [[exercise-1]]
-== Exercise 1: Navigating the OpenShift console
-
-In this exercise, you will log in to the OpenShift web console and explore the Virtualization section to understand the management interface.
-
-. Open a web browser and navigate to the OpenShift console:
-+
-{openshift_console_url}
-
-. Log in with the following credentials:
-+
-* **Username**: {admin_user}
-* **Password**: {admin_password}
-
-. After logging in, verify you are in the **Administrator** perspective by checking the dropdown in the upper-left corner of the console. If it shows **Developer**, switch it to **Administrator**.
-
-. In the left navigation menu, click on **Virtualization**. This opens the OpenShift Virtualization dashboard.
-
-. Explore the Virtualization overview page. You should see:
-+
-* **Overview** tab showing the virtualization cluster status
-* **Catalog** for creating new VMs from templates
-* **VirtualMachines** listing any existing VMs
-* **Templates** showing available VM templates
-* **Migrations** for tracking live migration operations
-
-// TODO: Add screenshot
-image::console-virtualization-overview.png[OpenShift Virtualization overview dashboard showing status and navigation tabs,link=self,window=blank,width=700,title="OpenShift Virtualization Overview"]
+== Exercise 1: Configure IBM Fusion Backup and Restore
 
 === Verify
-
-Confirm that the OpenShift Virtualization operator is installed and healthy:
-
-[source,bash]
-----
-oc get csv -n openshift-cnv
-----
-
-Expected output:
-
-----
-NAME                                      DISPLAY                    VERSION   REPLACES   PHASE
-kubevirt-hyperconverged-operator.v4.20.x  OpenShift Virtualization   4.20.x              Succeeded
-----
-
-Check that the HyperConverged custom resource is available:
-
-[source,bash]
-----
-oc get hyperconverged -n openshift-cnv
-----
-
-Expected output:
-
-----
-NAME                 AGE
-kubevirt-hyperconverged   <age>
-----
-
-* HyperConverged CR status shows as available
-* OpenShift Virtualization CSV phase is "Succeeded"
 
 [[exercise-2]]
-== Exercise 2: Exploring IBM Fusion storage integration
-
-IBM Fusion provides enterprise-grade storage for your OpenShift cluster. In this exercise, you will examine the storage classes available and understand how they support VM workloads.
-
-. In the OpenShift console, navigate to **Storage** > **StorageClasses** in the left navigation menu.
-
-. Identify the storage classes provided by IBM Fusion. Look for storage classes with "fusion" in their name or provisioner.
-+
-NOTE: IBM Fusion storage classes provide features critical for VM workloads, including ReadWriteMany access modes, snapshots, and cloning.
-
-. From the command line, list all available storage classes:
-+
-[source,bash]
-----
-oc get storageclass
-----
-
-. Examine the details of an IBM Fusion storage class:
-+
-[source,bash]
-----
-oc get storageclass <fusion-storage-class-name> -o yaml
-----
-+
-Replace `<fusion-storage-class-name>` with the actual Fusion storage class name from the previous step.
-
-. Check what persistent volumes are currently provisioned:
-+
-[source,bash]
-----
-oc get pv
-----
-
-. Verify that volume snapshot classes are available for VM snapshots:
-+
-[source,bash]
-----
-oc get volumesnapshotclass
-----
-
-// TODO: Add screenshot
-image::storage-classes-fusion.png[OpenShift StorageClasses page showing IBM Fusion storage classes,link=self,window=blank,width=700,title="IBM Fusion Storage Classes"]
+== Exercise 2: Exploring IBM Fusion Backup and Restore elements
 
 === Verify
-
-Confirm IBM Fusion storage is operational:
-
-[source,bash]
-----
-oc get storageclass | grep fusion
-----
-
-Expected output should show one or more storage classes with an IBM Fusion provisioner.
-
-* At least one IBM Fusion storage class is present
-* Volume snapshot classes are available
 
 [[exercise-3]]
-== Exercise 3: Explore IBM Fusion Backup and Restore Service
-
-Along IBM Fusion enterprise-grade storage for your OpenShift cluster, it also provides backup and restore servcies for your virtual machgines and applications.
-In this exercise, you will examine the backup and restore service and its configuration.
-
-//TODO - Write the entire section including snapshots
-. In the OpenShift console, navigate to **Storage** > **StorageClasses** in the left navigation menu.
-
-. Identify the storage classes provided by IBM Fusion. Look for storage classes with "fusion" in their name or provisioner.
-+
-NOTE: IBM Fusion storage classes provide features critical for VM workloads, including ReadWriteMany access modes, snapshots, and cloning.
-
-. From the command line, list all available storage classes:
-+
-[source,bash]
-----
-oc get storageclass
-----
-
-. Examine the details of an IBM Fusion storage class:
-+
-[source,bash]
-----
-oc get storageclass <fusion-storage-class-name> -o yaml
-----
-+
-Replace `<fusion-storage-class-name>` with the actual Fusion storage class name from the previous step.
-
-. Check what persistent volumes are currently provisioned:
-+
-[source,bash]
-----
-oc get pv
-----
-
-. Verify that volume snapshot classes are available for VM snapshots:
-+
-[source,bash]
-----
-oc get volumesnapshotclass
-----
-
-// TODO: Add screenshot
-image::storage-classes-fusion.png[OpenShift StorageClasses page showing IBM Fusion storage classes,link=self,window=blank,width=700,title="IBM Fusion Storage Classes"]
+== Exercise 3: Backup and Restore a virtual machine
 
 === Verify
-
-Confirm IBM Fusion storage is operational:
-
-[source,bash]
-----
-oc get storageclass | grep fusion
-----
-
-Expected output should show one or more storage classes with an IBM Fusion provisioner.
-
-* At least one IBM Fusion storage class is present
-* Volume snapshot classes are available
 
 [[exercise-4]]
-== Exercise 3: Creating your first virtual machine
-
-Now that you understand the environment, it is time to create your first virtual machine using the OpenShift Virtualization console.
-
-. In the OpenShift console, navigate to **Virtualization** > **Catalog**.
-
-. Browse the available VM templates. You should see templates for common operating systems including:
-+
-* Red Hat Enterprise Linux
-* CentOS Stream
-* Fedora
-* Microsoft Windows
-
-. Select a **Red Hat Enterprise Linux** template (for example, **Red Hat Enterprise Linux 9 VM**).
-
-. Click **Quick create VirtualMachine** to accept the default configuration, or click **Customize VirtualMachine** to adjust settings.
-+
-NOTE: For this exercise, use **Customize VirtualMachine** so you can review the configuration options.
-
-. On the customization page, review the following settings:
-+
-* **Name**: Enter a descriptive name, for example `rhel9-test-vm`
-* **Namespace/Project**: Select or create a project for your VM
-* **Storage**: Note the storage class used for the boot disk. Verify it uses an IBM Fusion storage class
-* **CPU and Memory**: Review the default allocation (typically 1 CPU, 2 GiB memory)
-
-. Click **Create VirtualMachine** to start the VM creation process.
-
-. After creation, click **Start** if the VM does not start automatically.
-
-. Wait for the VM status to change from **Starting** to **Running**. This may take a few minutes as the boot source is provisioned.
-
-. Once the VM is running, click the **Console** tab to access the VM console directly from the browser.
-
-// TODO: Add screenshot
-image::vm-running-console.png[OpenShift Virtualization showing a running RHEL 9 VM with console access,link=self,window=blank,width=700,title="Running Virtual Machine with Console Access"]
+== Exercise 3: Backup and Restore a containerized application
 
 === Verify
-
-Confirm your VM is running from the command line:
-
-[source,bash]
-----
-oc get vmi -A
-----
-
-Expected output:
-
-----
-NAMESPACE       NAME            AGE   PHASE     IP              NODENAME
-<project>       rhel9-test-vm   2m    Running   10.x.x.x       worker-node-x
-----
-
-Check the VM details:
-
-[source,bash]
-----
-oc describe vm rhel9-test-vm -n <project>
-----
-
-Verify the persistent volume claim was created with IBM Fusion storage:
-
-[source,bash]
-----
-oc get pvc -n <project>
-----
-
-* VM status shows "Running"
-* A persistent volume claim exists for the VM boot disk
-* The PVC uses an IBM Fusion storage class
 
 == Learning outcomes
 
 By completing this module, you should now understand:
 
-* How to navigate the OpenShift Virtualization interface and identify operator status
-* How IBM Fusion storage classes integrate with OpenShift to provide persistent storage for VMs
-* How to create a virtual machine from a template using the OpenShift console
-* How to verify VM status using both the console and the command line
+* How to navigate the IBM Fusion Backup and Restore web console
+* How to configure IBM Fusion Backup and Restore
+* How to backup and restore a virtual machine
+* How to backup and restore a containerized application
 
 == Module summary
 
-You have successfully explored the OpenShift Virtualization environment and created your first VM.
+You have successfully explored the IBM Backup and Restore environment
 
 **What you accomplished:**
 
-* Navigated the OpenShift Virtualization dashboard and identified key components
-* Examined IBM Fusion storage classes and verified storage integration
-* Created a RHEL 9 virtual machine from a template
-* Verified VM and storage status using both the console and CLI
+* Navigated the IBM Backup and Restore console
+* Backup and restore a virtual machine
+* Backup and restore a containerized application
 
 **Key takeaways:**
 
-* OpenShift Virtualization runs VMs as native Kubernetes resources alongside containers
-* IBM Fusion provides enterprise storage features including snapshots and ReadWriteMany access
-* VM creation follows familiar patterns, whether using templates or custom specifications
-* Both the web console and CLI are available for VM management and troubleshooting
+* IBM Fusion Backup and Restore features
+* IBM Fusion web console and integration with Red Hat OpenShift console
 
 **Next steps:**
 
-Module 5 will cover IBM Fusion Backup and Restore.
+You completed this training.
 
 == Assets needed
 
