@@ -50,17 +50,253 @@ A virtual machone transitions through specific states during its lifecycle. It i
 | Failed | VMI encountered an unrecoverable error.  | → Stopped (manual restart)
 |===
 
-[[exercise-1]]
-== Exercise 1: Lifecycle 1
+== Creating VMs
 
-In this exercise, you will log in to the OpenShift web console and explore the Virtualization section to understand the management interface.
+Red Hat OpenShift Virtualization provides three primary ways to create a virtual machine, each suited to different workflows:
+
+Web Console Wizard::
+Guided UI experience with templates. Ideal for ad-hoc creation or new users.
+
+YAML Manifest::
+Declarative, version-controllable definition. Preferred for automation and GitOps pipelines.
+
+virtctl CLI::
+Imperative command-line creation. Useful for quick provisioning in scripted environments.
+
+=== VM Manifest Anatomy
+
+A `VirtualMachine` manifest is a standard Kubernetes object. The following annotated example creates a RHEL 9 VM with 2 vCPUs, 4 GiB RAM, and a 30 GiB boot disk cloned from a golden image.
+
+[source,yaml]
+----
+apiVersion: kubevirt.io/v1
+kind: VirtualMachine
+metadata:
+  name: rhel9-webserver
+  namespace: vmlab-student
+  labels:
+    app: webserver
+spec:
+  running: false               # <1>
+  template:
+    metadata:
+      labels:
+        kubevirt.io/vm: rhel9-webserver
+    spec:
+      domain:
+        cpu:
+          cores: 2             # <2>
+          sockets: 1
+          threads: 1
+        memory:
+          guest: 4Gi
+        devices:
+          disks:
+          - name: rootdisk
+            disk:
+              bus: virtio      # <3>
+          - name: cloudinitdisk
+            disk:
+              bus: virtio
+          interfaces:
+          - name: default
+            masquerade: {}     # <4>
+      networks:
+      - name: default
+        pod: {}
+      volumes:
+      - name: rootdisk
+        dataVolume:
+          name: rhel9-webserver-rootdisk
+      - name: cloudinitdisk
+        cloudInitNoCloud:
+          userData: |
+            #cloud-config
+            user: cloud-user
+            password: redhat123
+            chpasswd: { expire: False }
+            runcmd:
+              - dnf install -y httpd
+              - systemctl enable --now httpd
+  dataVolumeTemplates:         # <5>
+  - metadata:
+      name: rhel9-webserver-rootdisk
+    spec:
+      storage:
+        accessModes: [ReadWriteMany]
+        resources:
+          requests:
+            storage: 30Gi
+        storageClassName: ocs-storagecluster-ceph-rbd-virtualization
+      source:
+        pvc:
+          namespace: openshift-virtualization-os-images
+          name: rhel9-guest-image
+----
+<1> VM is created in a stopped state. Set to `true` to start immediately.
+<2> vCPU topology: 2 cores × 1 socket × 1 thread = 2 vCPUs total.
+<3> `virtio` is the paravirtualized driver — fastest option for Linux guests.
+<4> `masquerade` provides NAT connectivity via the pod network.
+<5> `dataVolumeTemplates` ties the disk lifecycle to the VM — the PVC is deleted with the VM.
+
+TIP: Using `dataVolumeTemplates` keeps the disk definition co-located with the VM. When the VM is deleted, the associated DataVolume and PVC are also deleted automatically unless the PVC is first unlinked.
+
+=== Cloud-Init Customization
+
+Cloud-init runs inside the VM on first boot and configures the guest operating system. OpenShift Virtualization supports two cloud-init data sources:
+
+`cloudInitNoCloud`::
+Data is passed directly in the VMI spec as a volume. No DHCP or metadata server required. Suitable for most lab and production scenarios.
+
+`cloudInitConfigDrive`::
+Compatible with OpenStack-style config drives. Used when migrating workloads from OpenStack environments.
+
+A practical cloud-init configuration covering common provisioning tasks:
+
+[source,yaml]
+----
+#cloud-config
+hostname: rhel9-webserver
+user: cloud-user
+password: redhat123
+chpasswd: { expire: False }
+ssh_authorized_keys:
+  - ssh-rsa AAAA...your-public-key
+packages:
+  - httpd
+  - firewalld
+runcmd:
+  - systemctl enable --now httpd
+  - firewall-cmd --add-service=http --permanent
+  - firewall-cmd --reload
+write_files:
+  - path: /var/www/html/index.html
+    content: |
+      <h1>Hello from OpenShift Virtualization!</h1>
+----
+
+[[exercise-1]]
+== Exercise 1: Create and Inspect Virtual Machine
+
+In this exercise you will create a RHEL 9 virtual machine from a YAML manifest, verify the underlying Kubernetes objects, and connect to the VM console.
+
+. Setup your namespace
++
+[source, bash]
+----
+oc new-project vmlab-student
+----
+
+. Create VM Manifest
++
+[source, bash]
+----
+cat > rhel9-webserver.yaml << 'EOF'
+apiVersion: kubevirt.io/v1
+kind: VirtualMachine
+metadata:
+  name: rhel9-webserver
+  namespace: vmlab-student
+spec:
+  running: false
+  template:
+    spec:
+      domain:
+        cpu:
+          cores: 2
+          sockets: 1
+          threads: 1
+        memory:
+          guest: 4Gi
+        devices:
+          disks:
+          - name: rootdisk
+            disk:
+              bus: virtio
+          - name: cloudinitdisk
+            disk:
+              bus: virtio
+          interfaces:
+          - name: default
+            masquerade: {}
+      networks:
+      - name: default
+        pod: {}
+      volumes:
+      - name: rootdisk
+        dataVolume:
+          name: rhel9-webserver-rootdisk
+      - name: cloudinitdisk
+        cloudInitNoCloud:
+          userData: |
+            #cloud-config
+            user: cloud-user
+            password: redhat123
+            chpasswd: { expire: False }
+  dataVolumeTemplates:
+  - metadata:
+      name: rhel9-webserver-rootdisk
+    spec:
+      storage:
+        accessModes: [ReadWriteMany]
+        resources:
+          requests:
+            storage: 30Gi
+        storageClassName: ocs-storagecluster-ceph-rbd-virtualization
+      source:
+        pvc:
+          namespace: openshift-virtualization-os-images
+          name: rhel9-guest-image
+EOF
+
+oc apply -f rhel9-webserver.yaml
+----
+
+. Start the VM and observe object creation
++
+[source, bash]
+----
+# Start the VM (creates a VMI object)
+virtctl start rhel9-webserver -n vmlab-student
+
+# Watch the VM reach Running state
+oc get vm rhel9-webserver -n vmlab-student -w
+
+# Observe the VMI object that was created
+oc get vmi -n vmlab-student
+
+# Find the virt-launcher pod backing this VM
+oc get pods -n vmlab-student -l kubevirt.io/vm=rhel9-webserver
+
+# Describe the VMI for scheduling and resource details
+oc describe vmi rhel9-webserver -n vmlab-student
+
+# Check DataVolume import status
+oc get dv -n vmlab-student
+----
+
+. Connect to the VM console
++
+[source, bash]
+----
+# Attach to the serial console (Ctrl+] to exit)
+virtctl console rhel9-webserver -n vmlab-student
+
+# Inside the VM, verify cloud-init ran successfully
+cloud-init status
+systemctl status httpd
+curl http://localhost
+----
+
+WARNING: If the VM stays in the `Scheduling` state for more than 5 minutes, check node capacity with: `oc describe nodes | grep -A5 Allocated`. A DataVolume import may also be blocking start-up — check with `oc get dv`.
 
 === Verify
 
-Confirm that the OpenShift Virtualization operator is installed and healthy:
+Confirm the VM is running and on what specific node
 
 [source,bash]
 ----
+oc get pod -n vmlab-student -o wide | grep webserver
 ----
 
 Expected output:
@@ -68,25 +304,584 @@ Expected output:
 ----
 ----
 
-* Summary 1
-* Summary 2
+Confirm how many PVCs were created
+
+[source, bash]
+----
+oc get pvc -n vmlab-student
+----
+
+Expected output:
+
+----
+----
+
+Confirm the IP address assigned to the VM
+
+[source, bash]
+----
+oc describe vmi rhel9-webserver -n vmlab-student
+----
+
+Expected output:
+
+----
+----
+
+Expected output should show the following
+
+* On which node the VM is running
+* The number of PVCs for this VM is {x}
+* You have verified the IP address assigned to the VM
+
+== Operating Virtual Machines
+
+=== `virtctl` CLI
+
+The `virtctl` binary is the primary command-line interface for VM operations that go beyond basic Kubernetes resource management. It communicates with the `virt-api` server to execute actions like start, stop, console access, and live migration. Install it directly from the cluster to ensure version compatibility:
+
+[source,bash]
+----
+export ARCH=linux-amd64
+curl -L -o virtctl \
+  https://$(oc get route virtctl-downloadserver -n openshift-cnv \
+  -o jsonpath='{.spec.host}')/amd64/linux/virtctl.tar.gz | tar xz
+chmod +x virtctl && sudo mv virtctl /usr/local/bin/
+
+virtctl version
+----
+
+Key `virtctl` commands and their purposes:
+
+[cols="1,2",options="header"]
+|===
+| Command | Purpose
+| `virtctl start <vm>` | Power on a stopped VM
+| `virtctl stop <vm>` | Gracefully power off a running VM
+| `virtctl restart <vm>` | Graceful reboot (stop + start)
+| `virtctl pause <vm>` | Freeze vCPU execution (memory retained)
+| `virtctl unpause <vm>` | Resume a paused VM
+| `virtctl migrate <vm>` | Initiate live migration to another node
+| `virtctl console <vm>` | Attach to the VM serial console
+| `virtctl vnc <vm>` | Open a VNC session to the VM display
+| `virtctl ssh <vm>` | SSH into the VM via API tunnel
+| `virtctl addvolume <vm>` | Hot-plug a PVC as a disk
+| `virtctl removevolume <vm>` | Hot-unplug a previously attached disk
+|===
+
+=== Power Operations
+
+The `start`, `stop`, and `restart` operations manage the VM power state. These actions are recorded in the VM status and trigger VMI creation or deletion accordingly.
+
+[source,bash]
+----
+# Start a stopped VM
+virtctl start <vm-name> -n <namespace>
+
+# Graceful shutdown (sends ACPI power-off signal to guest OS)
+virtctl stop <vm-name> -n <namespace>
+
+# Force stop (equivalent to pulling the power cable — use with caution)
+virtctl stop --force --grace-period=0 <vm-name> -n <namespace>
+
+# Graceful restart (stop + start, preserves VM definition)
+virtctl restart <vm-name> -n <namespace>
+
+# Alternatively, use oc patch to toggle running state
+virtctl patch vm <vm-name> -n <namespace> \
+  --type merge -p '{"spec":{"running":true}}'
+----
+
+TIP: A graceful stop sends ACPI signals to the guest OS, allowing it to flush disk buffers and unmount filesystems cleanly. Always prefer graceful stop over force stop to avoid data corruption.
+
+=== Pause and Unpause
+
+Pausing a VM suspends vCPU execution while keeping the VM's memory contents live in RAM on the node. This is useful for temporarily freezing a VM to take a consistent snapshot or to free up CPU cycles on a busy node.
+
+[source,bash]
+----
+# Pause a running VM
+virtctl pause <vm-name> -n <namespace>
+
+# Verify the paused state
+oc get vmi <vm-name> -n <namespace> -o jsonpath='{.status.phase}'
+
+# Resume the VM
+virtctl unpause <vm-name> -n <namespace>
+----
+
+=== Accessing a VM
+
+Red Hat OpenShift Virtualization provides three access methods depending on the use case.
+
+==== Serial Console
+
+Direct serial console access works regardless of network configuration. Use it for initial setup, troubleshooting boot issues, or when SSH is unavailable.
+
+[source,bash]
+----
+virtctl console <vm-name> -n <namespace>
+# Press Ctrl+] to detach from the console
+----
+
+==== VNC Graphical Session
+
+VNC provides a graphical display useful for desktop VMs or when a GUI is required.
+
+[source,bash]
+----
+# Opens VNC in the default browser via port-forward tunnel
+virtctl vnc <vm-name> -n <namespace>
+----
+
+==== SSH via API Tunnel
+
+The `virtctl ssh` subcommand tunnels SSH through the Kubernetes API, avoiding the need to expose SSH ports via a Service or route.
+
+[source,bash]
+----
+# SSH using cloud-user and the injected key
+virtctl ssh cloud-user@<vm-name> -n <namespace>
+
+# Use a specific private key
+virtctl ssh cloud-user@<vm-name> -n <namespace> \
+  --local-ssh-opts='-i ~/.ssh/id_rsa'
+----
+
+=== Storage Concepts
+
+Each VM disk maps to a PersistentVolumeClaim (PVC) in Kubernetes. Understanding access modes is critical because they directly affect which operations are possible:
+
+ReadWriteOnce (RWO)::
+The PVC can be mounted by a single node. Sufficient for stopped or non-migrating VMs, but live migration requires RWX.
+
+ReadWriteMany (RWX)::
+The PVC can be mounted by multiple nodes simultaneously. Required for live migration because both source and target nodes must access the disk at the same time.
+
+ReadOnlyMany (ROX)::
+Read-only access from multiple nodes. Used for shared, immutable data.
+
+WARNING: Always provision VM boot disks with *ReadWriteMany* access mode if you plan to use live migration. Attempting to migrate a VM with RWO disks will fail with an error in the `VirtualMachineInstanceMigration` status.
+
+=== DataVolumes and Import Sources
+
+A DataVolume (DV) orchestrates getting disk images into PVCs. It supports several import sources:
+
+* *PVC clone* — clone an existing PVC (most common; used with golden images)
+* *HTTP/HTTPS URL* — download an image from an external URL
+* *Registry* — pull a container disk image from a container registry
+* *Upload* — upload a local disk image via `virtctl image-upload`
+* *Blank* — create an empty disk (used for data disks)
+
+i=== Hot-Plugging Disks
+
+Red Hat OpenShift Virtualization supports attaching and detaching PVC-backed disks to a running VM without rebooting. This is useful for attaching scratch space, shared data volumes, or importing data.
+
+[source,bash]
+----
+# Create a 10 GiB PVC for the data disk
+cat > data-disk.yaml << 'EOF'
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: <pvc-name>
+  namespace: <namespace>
+spec:
+  accessModes: [ReadWriteOnce]
+  resources:
+    requests:
+      storage: 10Gi
+  storageClassName: ocs-storagecluster-ceph-rbd-virtualization
+EOF
+oc apply -f data-disk.yaml
+
+# Wait for the PVC to be Bound
+oc get pvc <pvc-name> -n <namespace> -w
+
+# Hot-plug the PVC to the running VM
+virtctl addvolume <vm-name> \
+  --volume-name=<volume-name> \
+  --claim-name=<pvc-name> \
+  --persist \
+  -n <namespace>
+
+# Verify the disk appears inside the guest
+virtctl ssh cloud-user@<vm-name> -n <namespace> -- lsblk
+
+# Remove the disk without rebooting
+virtctl removevolume <vm-name> \
+  --volume-name=<volume-name> \
+  -n <namespace>
+----
 
 [[exercise-2]]
-== Exercise 2: Lifecycle 2
+== Exercise 2: Power Operations and Console Access
+
+. Power Cycling
++
+[source, bash]
+----
+# Confirm the VM is running
+oc get vm,vmi -n vmlab-student
+
+# Pause the VM and verify the state change
+virtctl pause vm rhel9-webserver -n vmlab-student
+oc get vmi rhel9-webserver -n vmlab-student -o wide
+
+# Unpause and confirm it returns to Running
+virtctl unpause vm rhel9-webserver -n vmlab-student
+oc get vmi rhel9-webserver -n vmlab-student -o wide
+
+# Perform a graceful restart
+virtctl restart rhel9-webserver -n vmlab-student
+
+# Watch the VMI object recreate (old one deleted, new one appears)
+oc get vmi -n vmlab-student -w
+----
+
+. Explore Access Methods
++
+[source, bash]
+----
+# Connect to the serial console and log in as cloud-user / redhat123
+virtctl console rhel9-webserver -n vmlab-student
+
+# Inside the VM, check uptime (note it reset after restart)
+uptime
+hostname -I
+
+# Detach from console (Ctrl+])
+
+# Open VNC session (requires X display or browser forwarding)
+virtctl vnc rhel9-webserver -n vmlab-student &
+
+# SSH through the API tunnel
+virtctl ssh cloud-user@rhel9-webserver -n vmlab-student
+----
+
+. Force Stop and Recovery
++
+[source, bash]
+----
+# Force stop the VM (simulates a hard power-off)
+virtctl stop --force --grace-period=0 rhel9-webserver -n vmlab-student
+
+# Observe: VMI is immediately deleted
+oc get vmi -n vmlab-student
+
+# The VM object persists
+oc get vm -n vmlab-student
+
+# Start the VM again
+virtctl start rhel9-webserver -n vmlab-student
+oc get vmi -n vmlab-student -w
+----
 
 === Verify
 
-Expected output should show one or more storage classes with an IBM Fusion provisioner.
+Confirm the VMI Custom Resource is linked to the VM state
 
-* Summary 1
-* Summary 2
+[source,bash]
+----
+oc get vmi -n vmlab-student
+virtctl stop --force --grace-period=0 rhel9-webserver -n vmlab-student
+oc get vmi -n vmlab-student
+----
+
+Expected output:
+
+----
+----
+
+Confirm status of `virt-launcher` pod
+
+[source, bash]
+----
+oc get pod -n vmlab-student | grep virt-launcher
+----
+
+Expected output:
+
+----
+----
+
+Confirm what happens when the VM restarts
+
+[source, bash]
+----
+virtctl start rhel9-webserver -n vmlab-student
+oc get vmi -n vmlab-student
+----
+
+Expected output:
+
+----
+----
+
+Expected output should show the following
+
+* The status of the `virt-launcher` when VM is paused
+* The VMI name after a restart
+
+== Snapshots
+
+=== VM Snapshots
+
+A `VirtualMachineSnapshot` captures the state of a VM's disks at a point in time. Snapshots are useful for creating restore points before risky changes such as OS upgrades, configuration changes, or application updates.
+
+Red Hat OpenShift Virtualization snapshots leverage the CSI (Container Storage Interface) VolumeSnapshot API and require a CSI driver that supports snapshots (such as OpenShift Data Foundation / Ceph RBD).
+
+[source,bash]
+----
+# Stop the VM for a consistent snapshot (preferred)
+virtctl stop <vm-name> -n <namespace>
+
+cat << 'EOF' | oc apply -f -
+apiVersion: snapshot.kubevirt.io/v1beta1
+kind: VirtualMachineSnapshot
+metadata:
+  name: <snapshot-name>
+  namespace: <namespace>
+spec:
+  source:
+    apiGroup: kubevirt.io
+    kind: VirtualMachine
+    name: <vm-name>
+EOF
+
+# Monitor snapshot creation
+oc get vmsnapshot -n <namespace> -w
+
+# Verify snapshot is Ready
+oc get vmsnapshot <snapshot-name> -n <namespace> \
+  -o jsonpath='{.status.readyToUse}'
+----
+
+=== Restoring from a Snapshot
+
+A `VirtualMachineRestore` reverts a VM to the state captured in a snapshot. The VM must be stopped before initiating a restore.
+
+[source,bash]
+----
+# Restore the VM to the snapshot (VM must be stopped)
+cat << 'EOF' | oc apply -f -
+apiVersion: snapshot.kubevirt.io/v1beta1
+kind: VirtualMachineRestore
+metadata:
+  name: <restore-name>
+  namespace: <namespace>
+spec:
+  target:
+    apiGroup: kubevirt.io
+    kind: VirtualMachine
+    name: <vm-name>
+  virtualMachineSnapshotName: <snapshot-name>
+EOF
+
+# Watch restore progress
+oc get vmrestore -n <namespace> -w
+
+# Start the VM after restore completes
+virtctl start <vm-name> -n <namespace>
+----
+
+[[exercise-3]]
+== Exercise 3: Snapshot, Corrupt Data, and Restore
+
+. Stop the virtual machine
++
+[source, bash]
+----
+# Stop the VM for a consistent snapshot
+virtctl stop rhel9-webserver -n vmlab-student
+----
+
+. Snapshot the virtual machine
++
+[source, bash]
+----
+cat << 'EOF' | oc apply -f -
+apiVersion: snapshot.kubevirt.io/v1beta1
+kind: VirtualMachineSnapshot
+metadata:
+  name: rhel9-webserver-pre-change
+  namespace: vmlab-student
+spec:
+  source:
+    apiGroup: kubevirt.io
+    kind: VirtualMachine
+    name: rhel9-webserver
+EOF
+
+oc get vmsnapshot -n vmlab-student -w
+----
+
+. Restart the virtual machine
++
+[source, bash]
+----
+virtctl start rhel9-webserver -n vmlab-student
+----
+
+. Simulate failure
++
+[source, bash]
+----
+virtctl ssh cloud-user@rhel9-webserver -n vmlab-student
+sudo systemctl stop httpd
+sudo dnf remove -y httpd
+----
+
+. Verify Webserver stopped inside the VM
++
+[source, bash]
+----
+curl http://localhost   # Should fail
+exit
+----
+
+. Stop the virtual machine
++
+[source, bash]
+----
+virtctl stop rhel9-webserver -n vmlab-student
+
+----
+
+. Restore the virtual machine
++
+[source, bash]
+----
+cat << 'EOF' | oc apply -f -
+apiVersion: snapshot.kubevirt.io/v1beta1
+kind: VirtualMachineRestore
+metadata:
+  name: rhel9-webserver-restore-pre
+  namespace: vmlab-student
+spec:
+  target:
+    apiGroup: kubevirt.io
+    kind: VirtualMachine
+    name: rhel9-webserver
+  virtualMachineSnapshotName: rhel9-webserver-pre-change
+EOF
+
+oc get vmrestore rhel9-webserver-restore-pre -n vmlab-student -w
+----
+
+. Restart the virtual machine when restore is complete
++
+[source, bash]
+----
+virtctl start rhel9-webserver -n vmlab-student
+----
+
+=== Verify
+
+Now that the restore has completed it is important to verify the restore was successful and the webserver is operational.
+
+Verify the webserver is opertational again
+ 
+[source, bash]
+----
+virtctl ssh cloud-user@rhel9-webserver -n vmlab-student \
+  -- 'curl http://localhost'
+----
+
+Expected output:
+
+----
+----
+
+Expected output should show the following
+
+* The webserver is operational
+
+== VM Decommissioning and Cleanup
+
+=== Planned Decommissioning
+
+Decommissioning a VM is a multi-step process. Rushing it can result in data loss or orphaned storage objects. Follow this procedure for a safe, clean decommission:
+
+. Back up any data that needs to be retained (application data, snapshots, exports).
+. Notify users or dependent services of the pending shutdown.
+. Stop the VM gracefully using `virtctl stop`.
+. Delete any snapshots associated with the VM (optional — frees storage).
+. Delete the VM object — this cascades to delete associated DataVolumes and PVCs created via `dataVolumeTemplates`.
+. Verify all associated objects are removed.
+
+=== Deletion Commands
+
+[source,bash]
+----
+# Step 1: Graceful stop
+virtctl stop <vm-name> -n <namespace>
+
+# Step 2: Delete snapshots (if any)
+oc delete vmsnapshot -n <namespace> --all
+
+# Step 3: Delete the VM (cascades to DVs and PVCs from dataVolumeTemplates)
+oc delete vm <vm-name> -n <namespace>
+
+# Step 4: Verify cleanup
+oc get vm,vmi,dv,pvc,vmsnapshot -n <namespace>
+
+# Note: Manually created PVCs (not in dataVolumeTemplates) are NOT
+# automatically deleted. Remove them explicitly if no longer needed.
+oc delete pvc <volume-name> -n <namespace>
+----
+
+=== Protecting Against Accidental Deletion
+
+To prevent accidental deletion of production VMs, use Kubernetes finalizers or resource annotations. Red Hat OpenShift Virtualization also supports a deletion protection annotation:
+
+[source,bash]
+----
+# Add deletion protection annotation
+oc annotate vm <vm-name> -n <namespace> \
+  kubevirt.io/vm-deletion-protection=true
+
+# The VM cannot be deleted until the annotation is removed
+oc delete vm <vm-name> -n <namespace>
+# Error: admission webhook denied the request
+
+# Remove protection before decommissioning
+oc annotate vm <vm-name> -n <namespace> \
+  kubevirt.io/vm-deletion-protection-
+----
+
+== VM Lifecycle Issues
+
+=== VM Stuck in Scheduling State
+
+If a VM stays in `Scheduling`/`Pending` for more than a few minutes, investigate using the following approach:
+
+[source,bash]
+----
+# Check VMI events for scheduling errors
+oc describe vmi <vm-name> -n <namespace> | grep -A20 Events
+
+# Check the virt-launcher pod (may reveal image pull or resource errors)
+oc get pods -n <namespace> -l kubevirt.io/vm=<vm-name>
+oc describe pod <virt-launcher-pod> -n <namespace>
+
+# Check node capacity
+oc describe nodes | grep -A10 'Allocated resources'
+
+# Check if DataVolume import is still in progress
+oc get dv -n <namespace>
+oc describe dv <root-disk-name> -n <namespace> | grep -A10 Conditions
+----
 
 == Learning outcomes
 
 By completing this module, you should now understand:
 
-* How to identify key Red Hat OpenShift Virtualization Custom Resource objects
-* How to alter the state of a virtual machine
+* How to create virtual machines
+* How to alter the state of virtual machines
+* How to connect to virtual machines
+* How to snapshot virtual machines
+* How to restore virtual machines as a user
 
 == Module summary
 
@@ -101,6 +896,10 @@ You have successfully explored the OpenShift Virtualization lifecycle management
 
 * You are now familiar with `VM`, `VMI` and `DV` Custom Resources
 * You understand virtual machine states
+* You can start, stop, pause virtual machine
+* You can connect into virtual machines with different methods
+* You are familiar with `virtctl`
+* You can snapshot and restore virtual machines
 
 **Next steps:**
 
@@ -108,6 +907,3 @@ Module 3 will cover VM live migration.
 
 == Assets needed
 
-. `content/modules/ROOT/assets/images/console-virtualization-overview.png` - Screenshot of the OpenShift Virtualization overview dashboard
-. `content/modules/ROOT/assets/images/storage-classes-fusion.png` - Screenshot of StorageClasses page showing IBM Fusion classes
-. `content/modules/ROOT/assets/images/vm-running-console.png` - Screenshot of a running VM with console access
