@@ -187,6 +187,20 @@ In this exercise you will create a RHEL 9 virtual machine from a YAML manifest, 
 oc new-project vmlab-student
 ----
 
+. Expected output:
++ 
+----
+Now using project "vmlab-student" on server "https://api.ocp.t26dj.sandbox4392.opentlc.com:6443".
+
+You can add applications to this project with the 'new-app' command. For example, try:
+
+    oc new-app rails-postgresql-example
+
+to build a new example application in Ruby. Or use kubectl to deploy a simple Kubernetes application:
+
+    kubectl create deployment hello-node --image=registry.k8s.io/e2e-test-images/agnhost:2.43 -- /agnhost serve-hostname
+----
+
 . Create VM Manifest
 +
 [source, bash]
@@ -233,6 +247,25 @@ spec:
             user: cloud-user
             password: redhat123
             chpasswd: { expire: False }
+            yum_repos:
+              baseos:
+                name: CentOS Stream 9 BaseOS
+                baseurl: https://mirror.stream.centos.org/9-stream/BaseOS/x86_64/os/
+                enabled: true
+                gpgcheck: false
+              appstream:
+                name: CentOS Stream 9 AppStream
+                baseurl: https://mirror.stream.centos.org/9-stream/AppStream/x86_64/os/
+                enabled: true
+                gpgcheck: false
+            packages:
+              - httpd
+              - firewalld
+            runcmd:
+              - systemctl enable --now firewalld
+              - systemctl enable --now httpd
+              - firewall-cmd --permanent --add-service=http
+              - firewall-cmd --reload
   dataVolumeTemplates:
   - metadata:
       name: rhel9-webserver-rootdisk
@@ -243,13 +276,34 @@ spec:
           requests:
             storage: 30Gi
         storageClassName: ocs-storagecluster-ceph-rbd-virtualization
-      source:
-        pvc:
+      sourceRef:
+          kind: DataSource
+          name: rhel9
           namespace: openshift-virtualization-os-images
-          name: rhel9-guest-image
 EOF
+----
 
+. Apply the manifest
++
+[source, bash]
+----
 oc apply -f rhel9-webserver.yaml
+----
+
+. Expected output:
++
+----
+Warning: spec.running is deprecated, please use spec.runStrategy instead.
+virtualmachine.kubevirt.io/rhel9-webserver created
+----
+
+. Install CLI tool
++
+[source, bash]
+----
+curl -L https://$(oc get route hyperconverged-cluster-cli-download -n openshift-cnv -o jsonpath='{.spec.host}')/amd64/linux/virtctl.tar.gz -o virtctl.tar.gz
+tar -xzf virtctl.tar.gz
+chmod +x virtctl && sudo mv virtctl /usr/local/bin/
 ----
 
 . Start the VM and observe object creation
@@ -266,7 +320,7 @@ oc get vm rhel9-webserver -n vmlab-student -w
 oc get vmi -n vmlab-student
 
 # Find the virt-launcher pod backing this VM
-oc get pods -n vmlab-student -l kubevirt.io/vm=rhel9-webserver
+oc get pods -n vmlab-student -l vm.kubevirt.io/name=rhel9-webserver
 
 # Describe the VMI for scheduling and resource details
 oc describe vmi rhel9-webserver -n vmlab-student
@@ -342,10 +396,8 @@ The `virtctl` binary is the primary command-line interface for VM operations tha
 
 [source,bash]
 ----
-export ARCH=linux-amd64
-curl -L -o virtctl \
-  https://$(oc get route virtctl-downloadserver -n openshift-cnv \
-  -o jsonpath='{.spec.host}')/amd64/linux/virtctl.tar.gz | tar xz
+curl -L https://$(oc get route hyperconverged-cluster-cli-download -n openshift-cnv -o jsonpath='{.spec.host}')/amd64/linux/virtctl.tar.gz -o virtctl.tar.gz
+tar -xzf virtctl.tar.gz
 chmod +x virtctl && sudo mv virtctl /usr/local/bin/
 
 virtctl version
