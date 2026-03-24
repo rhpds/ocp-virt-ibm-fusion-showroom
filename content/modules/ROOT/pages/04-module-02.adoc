@@ -186,8 +186,8 @@ In this exercise you will create a RHEL 9 virtual machine from a YAML manifest, 
 ----
 oc new-project vmlab-student
 ----
-
-. Expected output:
++
+Expected output:
 + 
 ----
 Now using project "vmlab-student" on server "https://api.ocp.t26dj.sandbox4392.opentlc.com:6443".
@@ -212,7 +212,7 @@ metadata:
   name: rhel9-webserver
   namespace: vmlab-student
 spec:
-  running: false
+  runStrategy: Manual
   template:
     spec:
       domain:
@@ -262,6 +262,7 @@ spec:
               - httpd
               - firewalld
             runcmd:
+              - echo "This is the WEB server before failure." | sudo tee /var/www/html/index.html
               - systemctl enable --now firewalld
               - systemctl enable --now httpd
               - firewall-cmd --permanent --add-service=http
@@ -283,21 +284,36 @@ spec:
 EOF
 ----
 
-. Apply the manifest
+. Apply the manifest to create the virtual machine
 +
 [source, bash]
 ----
 oc apply -f rhel9-webserver.yaml
 ----
-
-. Expected output:
++
+Expected output:
 +
 ----
-Warning: spec.running is deprecated, please use spec.runStrategy instead.
 virtualmachine.kubevirt.io/rhel9-webserver created
 ----
 
-. Install CLI tool
+. Verify the VM status
++
+[source, bash]
+----
+oc get vm -n vmlab-student
+----
++
+Expected output:
++
+----
+NAME              AGE   STATUS    READY
+rhel9-webserver   <age> Stopped   False
+----
++
+NOTE: You can see that the status of the VM is `Stopped` and the readiness is `False`
+
+. Install CLI tool on your bastion node
 +
 [source, bash]
 ----
@@ -310,23 +326,106 @@ chmod +x virtctl && sudo mv virtctl /usr/local/bin/
 +
 [source, bash]
 ----
-# Start the VM (creates a VMI object)
 virtctl start rhel9-webserver -n vmlab-student
+----
++
+NOTE: This will create the VMI object
++
+Expected output:
++
+----
+VM rhel9-webserver was scheduled to start
+----
 
-# Watch the VM reach Running state
+. Watch the VM reach Running state
++
+[source, bash]
+----
 oc get vm rhel9-webserver -n vmlab-student -w
+----
++
+Expected output:
++
+----
+NAME              AGE     STATUS    READY
+rhel9-webserver   <age>   Running   True
+----
++
+TIP: Wait for status to be `Running` and readiness to be `True`
 
-# Observe the VMI object that was created
+. Observe the VMI object that was created
++
+[source, bash]
+----
 oc get vmi -n vmlab-student
+----
++
+Expected output
++
+----
+NAME              AGE    PHASE     IP             NODENAME                                   READY
+rhel9-webserver   <age>  Running   10.<x.y.z>     ip-<nodename>.us-east-2.compute.internal   True
+----
 
-# Find the virt-launcher pod backing this VM
+. Find the virt-launcher pod backing this VM
++
+[source, bash]
+----
 oc get pods -n vmlab-student -l vm.kubevirt.io/name=rhel9-webserver
+----
++
+Expected output:
++
+----
+NAME                                  READY   STATUS    RESTARTS   AGE
+virt-launcher-rhel9-webserver-<xxx>   2/2     Running   0          <age>
+----
 
-# Describe the VMI for scheduling and resource details
+. Describe the VMI for scheduling and resource details
++
+[source, bash]
+----
 oc describe vmi rhel9-webserver -n vmlab-student
+----
++
+Expected output:
++
+----
+[truncated]
+Events:
+  Type    Reason            Age    From                       Message
+  ----    ------            ----   ----                       -------
+  Normal  SuccessfulCreate  4m22s  virtualmachine-controller  Created virtual machine pod virt-launcher-rhel9-webserver-<xxx>
+  Normal  Created           4m10s  virt-handler               VirtualMachineInstance defined.
+  Normal  Started           4m10s  virt-handler               VirtualMachineInstance started.
+----
 
-# Check DataVolume import status
+. Check DataVolume import status
++
+[source, bash]
+----
 oc get dv -n vmlab-student
+----
++
+Expected output:
+----
+NAME                       PHASE       PROGRESS   RESTARTS   AGE
+rhel9-webserver-rootdisk   Succeeded   100.0%                <age>
+----
++
+NOTE: Note that the import progress field shows `100.0%`
+
+. Check PVC for the VM
++
+[source, bash]
+----
+oc get pvc -n vmlab-student
+----
++
+Expected output:
+----
+NAME                       STATUS   VOLUME                                     CAPACITY   ACCESS MODES   STORAGECLASS                                 VOLUMEATTRIBUTESCLASS   AGE
+rhel9-webserver-rootdisk   Bound    pvc-<unique_uuid>                          30Gi       RWX            ocs-storagecluster-ceph-rbd-virtualization   <unset>                 <age>
 ----
 
 . Connect to the VM console
@@ -335,14 +434,36 @@ oc get dv -n vmlab-student
 ----
 # Attach to the serial console (Ctrl+] to exit)
 virtctl console rhel9-webserver -n vmlab-student
+----
++
+WARNING: It will take some time for the VM to start and the `cloud-init` step to complete. Once no messages are displayed the VM is ready
 
+. Verify the VM deployment is complete
++
+[source, bash]
+----
 # Inside the VM, verify cloud-init ran successfully
-cloud-init status
+sudo cloud-init status
 systemctl status httpd
 curl http://localhost
 ----
++
+TIP: Hit <CR> to get to the login prompt. The VM username is `cloud-user` and the password `redhat123`
++
+Expected output of your `curl` command
++
+----
+This is the WEB server before failure.
+----
 
-WARNING: If the VM stays in the `Scheduling` state for more than 5 minutes, check node capacity with: `oc describe nodes | grep -A5 Allocated`. A DataVolume import may also be blocking start-up — check with `oc get dv`.
+. Exit your VM
++
+[source, bash]
+----
+exit
+----
++
+TIP: Hit `CTRL+5` to disconnect from the VM console
 
 === Verify
 
