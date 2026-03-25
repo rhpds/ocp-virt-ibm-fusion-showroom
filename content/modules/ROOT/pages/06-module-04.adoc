@@ -4,69 +4,66 @@ include::partial$_attributes.adoc[]
 :toc: macro
 :toclevels: 1
 
+// TODO: Intro for the module
 Modernizing virtualization starts with understanding the platform. Before you can migrate workloads or build new VMs, you need to know what tools are available, how they fit together, and how storage integrates with compute.
 
-In this module, you will explore the IBM Backup and Restore functionality for your containerized applications as well as for your virtual machines.
+In this module, you will explore ...
 
 == Learning objectives
 
 By the end of this module, you will be able to:
 
-* Configure IBM Fusion Backup and Restore
-* Navigate the IBM Fusion Backup and Restore web console and its key configuration elements
-* Backup and restore a Red Hat OpenShift virtual machine
-* Backup and restore a Red Hat OpenShift conatinerized application
+* Objective 1
+* Objective 2
+* Objective n
 
 [[exercise-1]]
-== Exercise 1: Configure IBM Fusion Backup and Restore
+== Exercise 1: VM Live Migration Exercise 1
+
+In this exercise, you will ...
 
 === Verify
+
+Confirm that ...
 
 [[exercise-2]]
-== Exercise 2: Exploring IBM Fusion Backup and Restore elements
+== Exercise 2: VM Live Migration Exercise 2
+
+In this exercise, you will ...
 
 === Verify
 
-[[exercise-3]]
-== Exercise 3: Backup and Restore a virtual machine
-
-=== Verify
-
-[[exercise-4]]
-== Exercise 3: Backup and Restore a containerized application
-
-=== Verify
+Confirm that ...
 
 == Learning outcomes
 
 By completing this module, you should now understand:
 
-* How to navigate the IBM Fusion Backup and Restore web console
-* How to configure IBM Fusion Backup and Restore
-* How to backup and restore a virtual machine
-* How to backup and restore a containerized application
+* How to navigate the OpenShift Virtualization interface and identify operator status
+* How IBM Fusion storage classes integrate with OpenShift to provide persistent storage for VMs
+* How to create a virtual machine from a template using the OpenShift console
+* How to verify VM status using both the console and the command line
 
 == Module summary
 
-You have successfully explored the IBM Backup and Restore environment
+You have successfully explored the OpenShift Virtualization environment and created your first VM.
 
 **What you accomplished:**
 
-* Navigated the IBM Backup and Restore console
-* Backup and restore a virtual machine
-* Backup and restore a containerized application
+* Navigated the OpenShift Virtualization dashboard and identified key components
+* Examined IBM Fusion storage classes and verified storage integration
+* Created a RHEL 9 virtual machine from a template
+* Verified VM and storage status using both the console and CLI
 
 **Key takeaways:**
 
-* IBM Fusion Backup and Restore features
-* IBM Fusion web console and integration with Red Hat OpenShift console
+* OpenShift Virtualization runs VMs as native Kubernetes resources alongside containers
+* IBM Fusion provides enterprise storage features including snapshots and ReadWriteMany access
+* VM creation follows familiar patterns, whether using templates or custom specifications
+* Both the web console and CLI are available for VM management and troubleshooting
 
 **Next steps:**
 
-You completed this training.
+Module 4 will cover IBM Fusion Backup and Restore service
 
 == Assets needed
-
-. `content/modules/ROOT/assets/images/console-virtualization-overview.png` - Screenshot of the OpenShift Virtualization overview dashboard
-. `content/modules/ROOT/assets/images/storage-classes-fusion.png` - Screenshot of StorageClasses page showing IBM Fusion classes
-. `content/modules/ROOT/assets/images/vm-running-console.png` - Screenshot of a running VM with console access
