@@ -9,17 +9,15 @@ include::partial$_attributes.adoc[]
 === Full workshop (90 minutes)
 
 * **Module 1**: Exploring the environment (20 minutes)
-* **Module 2**: VM lifecycle management (20 minutes)
-* **Module 3**: Workload migration (20 minutes)
-* **Module 4**: IBM Fusion Access for SAN (20 minutes)
-* **Module 5**: IBM Fusion Backup & Restore (if time permits)
+* **Module 2**: VM lifecycle management (25 minutes)
+* **Module 3**: Workload migration (25 minutes)
+* **Module 4**: IBM Fusion Backup & Restore (20)
 
 === Abbreviated workshop (60 minutes)
 
-* **Module 1**: Exploring the environment (15 minutes)
-* **Module 2**: VM lifecycle management (15 minutes)
+* **Module 1**: Exploring the environment (20 minutes)
+* **Module 2**: VM lifecycle management (25 minutes)
 * **Module 3**: Workload migration (15 minutes, core exercises only)
-* **Module 4**: Workload migration (15 minutes, core exercises only)
 
 == Technical requirements
 
