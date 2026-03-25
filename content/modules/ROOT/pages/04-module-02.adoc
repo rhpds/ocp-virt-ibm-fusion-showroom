@@ -186,6 +186,20 @@ In this exercise you will create a RHEL 9 virtual machine from a YAML manifest, 
 ----
 oc new-project vmlab-student
 ----
++
+Expected output:
++ 
+----
+Now using project "vmlab-student" on server "https://api.ocp.t26dj.sandbox4392.opentlc.com:6443".
+
+You can add applications to this project with the 'new-app' command. For example, try:
+
+    oc new-app rails-postgresql-example
+
+to build a new example application in Ruby. Or use kubectl to deploy a simple Kubernetes application:
+
+    kubectl create deployment hello-node --image=registry.k8s.io/e2e-test-images/agnhost:2.43 -- /agnhost serve-hostname
+----
 
 . Create VM Manifest
 +
@@ -198,7 +212,7 @@ metadata:
   name: rhel9-webserver
   namespace: vmlab-student
 spec:
-  running: false
+  runStrategy: Manual
   template:
     spec:
       domain:
@@ -233,6 +247,26 @@ spec:
             user: cloud-user
             password: redhat123
             chpasswd: { expire: False }
+            yum_repos:
+              baseos:
+                name: CentOS Stream 9 BaseOS
+                baseurl: https://mirror.stream.centos.org/9-stream/BaseOS/x86_64/os/
+                enabled: true
+                gpgcheck: false
+              appstream:
+                name: CentOS Stream 9 AppStream
+                baseurl: https://mirror.stream.centos.org/9-stream/AppStream/x86_64/os/
+                enabled: true
+                gpgcheck: false
+            packages:
+              - httpd
+              - firewalld
+            runcmd:
+              - echo "This is the WEB server before failure." | sudo tee /var/www/html/index.html
+              - systemctl enable --now firewalld
+              - systemctl enable --now httpd
+              - firewall-cmd --permanent --add-service=http
+              - firewall-cmd --reload
   dataVolumeTemplates:
   - metadata:
       name: rhel9-webserver-rootdisk
@@ -243,37 +277,144 @@ spec:
           requests:
             storage: 30Gi
         storageClassName: ocs-storagecluster-ceph-rbd-virtualization
-      source:
-        pvc:
+      sourceRef:
+          kind: DataSource
+          name: rhel9
           namespace: openshift-virtualization-os-images
-          name: rhel9-guest-image
 EOF
+----
 
+. Apply the manifest to create the virtual machine
++
+[source, bash]
+----
 oc apply -f rhel9-webserver.yaml
+----
++
+Expected output:
++
+----
+virtualmachine.kubevirt.io/rhel9-webserver created
+----
+
+. Verify the VM status
++
+[source, bash]
+----
+oc get vm -n vmlab-student
+----
++
+Expected output:
++
+----
+NAME              AGE   STATUS    READY
+rhel9-webserver   <age> Stopped   False
+----
++
+NOTE: You can see that the status of the VM is `Stopped` and the readiness is `False`
+
+. Install CLI tool on your bastion node
++
+[source, bash]
+----
+curl -L https://$(oc get route hyperconverged-cluster-cli-download -n openshift-cnv -o jsonpath='{.spec.host}')/amd64/linux/virtctl.tar.gz -o virtctl.tar.gz
+tar -xzf virtctl.tar.gz
+chmod +x virtctl && sudo mv virtctl /usr/local/bin/
 ----
 
 . Start the VM and observe object creation
 +
 [source, bash]
 ----
-# Start the VM (creates a VMI object)
 virtctl start rhel9-webserver -n vmlab-student
+----
++
+NOTE: This will create the VMI object
++
+Expected output:
++
+----
+VM rhel9-webserver was scheduled to start
+----
 
-# Watch the VM reach Running state
+. Watch the VM reach Running state
++
+[source, bash]
+----
 oc get vm rhel9-webserver -n vmlab-student -w
+----
++
+Expected output:
++
+----
+NAME              AGE     STATUS    READY
+rhel9-webserver   <age>   Running   True
+----
++
+TIP: Wait for status to be `Running` and readiness to be `True`
 
-# Observe the VMI object that was created
+. Observe the VMI object that was created
++
+[source, bash]
+----
 oc get vmi -n vmlab-student
+----
++
+Expected output
++
+----
+NAME              AGE    PHASE     IP             NODENAME                                   READY
+rhel9-webserver   <age>  Running   10.<x.y.z>     ip-<nodename>.us-east-2.compute.internal   True
+----
 
-# Find the virt-launcher pod backing this VM
-oc get pods -n vmlab-student -l kubevirt.io/vm=rhel9-webserver
+. Find the virt-launcher pod backing this VM
++
+[source, bash]
+----
+oc get pods -n vmlab-student -l vm.kubevirt.io/name=rhel9-webserver
+----
++
+Expected output:
++
+----
+NAME                                  READY   STATUS    RESTARTS   AGE
+virt-launcher-rhel9-webserver-<xxx>   2/2     Running   0          <age>
+----
 
-# Describe the VMI for scheduling and resource details
+. Describe the VMI for scheduling and resource details
++
+[source, bash]
+----
 oc describe vmi rhel9-webserver -n vmlab-student
+----
++
+Expected output:
++
+----
+[truncated]
+Events:
+  Type    Reason            Age    From                       Message
+  ----    ------            ----   ----                       -------
+  Normal  SuccessfulCreate  4m22s  virtualmachine-controller  Created virtual machine pod virt-launcher-rhel9-webserver-<xxx>
+  Normal  Created           4m10s  virt-handler               VirtualMachineInstance defined.
+  Normal  Started           4m10s  virt-handler               VirtualMachineInstance started.
+----
 
-# Check DataVolume import status
+. Check DataVolume import status
++
+[source,bash]
+----
 oc get dv -n vmlab-student
 ----
++
+Expected output:
++
+----
+NAME                       PHASE       PROGRESS   RESTARTS   AGE
+rhel9-webserver-rootdisk   Succeeded   100.0%                <age>
+----
++
+NOTE: Note that the import progress field shows `100.0%`
 
 . Connect to the VM console
 +
@@ -281,57 +422,125 @@ oc get dv -n vmlab-student
 ----
 # Attach to the serial console (Ctrl+] to exit)
 virtctl console rhel9-webserver -n vmlab-student
+----
++
+WARNING: It will take some time for the VM to start and the `cloud-init` step to complete. Once messages stop flowing on your screen, the VM is ready.
 
-# Inside the VM, verify cloud-init ran successfully
-cloud-init status
-systemctl status httpd
-curl http://localhost
+. Login the VM
++
+[source, bash]
+----
+rhel9-webserver login: cloud-user
+Password: redhat123
+----
++
+TIP: Hit <CR> to get to the login prompt. The VM username is `cloud-user` and the password `redhat123` as illustrated above.
+
+. Verify the VM deployment is complete
++
+[source, bash]
+----
+sudo cloud-init status
+----
++
+Expected output:
++
+----
+status: done
 ----
 
-WARNING: If the VM stays in the `Scheduling` state for more than 5 minutes, check node capacity with: `oc describe nodes | grep -A5 Allocated`. A DataVolume import may also be blocking start-up — check with `oc get dv`.
+. Verify the WEB server status
++
+[source, bash]
+----
+sudo systemctl status httpd
+----
++
+Expected output:
++
+----
+● httpd.service - The Apache HTTP Server
+     Loaded: loaded (/usr/lib/systemd/system/httpd.service; enabled; preset: di>
+     Active: active (running) since Tue 2026-03-24 15:48:57 EDT; 5h 14min ago
+       Docs: man:httpd.service(8)
+   Main PID: 7918 (httpd)
+     Status: "Total requests: 1; Idle/Busy workers 100/0;Requests/sec: 5.3e-05;>
+      Tasks: 177 (limit: 22797)
+     Memory: 14.9M (peak: 15.4M)
+        CPU: 1min 30.890s
+[truncated]
+----
+
+. Verify the WEB server is operational
++
+[source, bash]
+----
+curl http://localhost
+----
++
+Expected output:
++
+----
+This is the WEB server before failure.
+----
+
+. Exit your VM
++
+[source, bash]
+----
+exit
+----
++
+TIP: Hit `CTRL+5` to disconnect from the VM console
 
 === Verify
 
-Confirm the VM is running and on what specific node
-
+. Confirm the VM is running and on what specific node
++
 [source,bash]
 ----
-oc get pod -n vmlab-student -o wide | grep webserver
+oc get pods -l vm.kubevirt.io/name=rhel9-webserver -o custom-columns="NAME:.metadata.name,STATUS:.status.phase,NODE:.spec.nodeName"
 ----
-
++
 Expected output:
-
++
 ----
+NAME                                  STATUS    NODE
+virt-launcher-rhel9-webserver-<xxx>   Running   ip-<nodename>.us-east-2.compute.internal
 ----
 
-Confirm how many PVCs were created
-
+. Confirm how many PVCs were created
++
 [source, bash]
 ----
-oc get pvc -n vmlab-student
+oc get pvc -o custom-columns="NAME:.metadata.name,SIZE:.status.capacity.storage,ACCESS MODES:.spec.accessModes[0],STORAGE CLASS:.spec.storageClassName"
 ----
-
++
 Expected output:
-
++
 ----
+NAME                       SIZE   ACCESS MODES    STORAGE CLASS
+rhel9-webserver-rootdisk   30Gi   ReadWriteMany   ocs-storagecluster-ceph-rbd-virtualization
 ----
 
-Confirm the IP address assigned to the VM
-
+. Confirm the IP address assigned to the VM
++
 [source, bash]
 ----
-oc describe vmi rhel9-webserver -n vmlab-student
+oc get vmi -o yaml | grep ipAddress:
 ----
-
++
 Expected output:
-
++
 ----
+      ipAddress: 10.<x>.<y>.<z>
 ----
 
-Expected output should show the following
+In this exercise you have verified:
 
 * On which node the VM is running
-* The number of PVCs for this VM is {x}
+* The number of PVCs for this VM is 1
+* The number of DataVolumes for this VM is 1
 * You have verified the IP address assigned to the VM
 
 == Operating Virtual Machines
@@ -342,10 +551,8 @@ The `virtctl` binary is the primary command-line interface for VM operations tha
 
 [source,bash]
 ----
-export ARCH=linux-amd64
-curl -L -o virtctl \
-  https://$(oc get route virtctl-downloadserver -n openshift-cnv \
-  -o jsonpath='{.spec.host}')/amd64/linux/virtctl.tar.gz | tar xz
+curl -L https://$(oc get route hyperconverged-cluster-cli-download -n openshift-cnv -o jsonpath='{.spec.host}')/amd64/linux/virtctl.tar.gz -o virtctl.tar.gz
+tar -xzf virtctl.tar.gz
 chmod +x virtctl && sudo mv virtctl /usr/local/bin/
 
 virtctl version
@@ -441,12 +648,14 @@ The `virtctl ssh` subcommand tunnels SSH through the Kubernetes API, avoiding th
 [source,bash]
 ----
 # SSH using cloud-user and the injected key
-virtctl ssh cloud-user@<vm-name> -n <namespace>
+virtctl ssh cloud-user@vm/<vm-name> -n <namespace>
 
 # Use a specific private key
 virtctl ssh cloud-user@<vm-name> -n <namespace> \
   --local-ssh-opts='-i ~/.ssh/id_rsa'
 ----
++
+TIP: You can also use the VMI to `ssh` into the virtual machine
 
 === Storage Concepts
 
@@ -517,65 +726,172 @@ virtctl removevolume <vm-name> \
 [[exercise-2]]
 == Exercise 2: Power Operations and Console Access
 
-. Power Cycling
+. Confirm the VM is running
 +
 [source, bash]
 ----
-# Confirm the VM is running
 oc get vm,vmi -n vmlab-student
+----
++
+Expercted output:
++
+----
+NAME                                         AGE     STATUS    READY
+virtualmachine.kubevirt.io/rhel9-webserver   <age>   Running   True
 
-# Pause the VM and verify the state change
+NAME                                                 AGE     PHASE     IP             NODENAME                                   READY
+virtualmachineinstance.kubevirt.io/rhel9-webserver   <age>   Running   10.<x>.<y>.<z> ip-<nodename>.us-east-2.compute.internal   True
+----
+
+
+. Pause the VM
++
+[source, bash]
+----
 virtctl pause vm rhel9-webserver -n vmlab-student
-oc get vmi rhel9-webserver -n vmlab-student -o wide
+----
++
+Expected output:
++
+----
+VMI rhel9-webserver was scheduled to pause
+----
 
-# Unpause and confirm it returns to Running
+.  Verify the status of the VM
++
+[source, bash]
+----
+oc get vmi rhel9-webserver -n vmlab-student -o wide
+----
++
+Expected output:
++
+----
+NAME              AGE     PHASE     IP             NODENAME                                   READY   LIVE-MIGRATABLE   PAUSED
+rhel9-webserver   <age>   Running   10.<x>.<y>.<z> ip-<nodename>.us-east-2.compute.internal   False   True              True
+----
++
+WARNING: Pay attention to the `READY` and `PAUSED` columns for the VMI
+
+. Unpause the VM
++
+[source, bash]
+----
 virtctl unpause vm rhel9-webserver -n vmlab-student
+----
++
+Expected output:
++
+----
+VMI rhel9-webserver was scheduled to unpause
+----
+
+. Check the status of the VMI
++
+[source, bash]
+----
 oc get vmi rhel9-webserver -n vmlab-student -o wide
+----
++
+Expected output:
++
+----
+NAME              AGE     PHASE     IP             NODENAME                                   READY   LIVE-MIGRATABLE   PAUSED
+rhel9-webserver   <age>   Running   10.<x>.<y>.<z> ip-<nodename>.us-east-2.compute.internal   True    True  
+----
++
+WARNING: Pay attention to the `READY` and `PAUSED` columns for the VMI
 
-# Perform a graceful restart
+. Perform a graceful restart of the VM
++
+[source, bash]
+----
 virtctl restart rhel9-webserver -n vmlab-student
-
-# Watch the VMI object recreate (old one deleted, new one appears)
-oc get vmi -n vmlab-student -w
+----
++
+Expected output:
++
+----
+VM rhel9-webserver was scheduled to restart
 ----
 
-. Explore Access Methods
+. Watch the VMI object recreate (old one deleted, new one appears)
 +
 [source, bash]
 ----
-# Connect to the serial console and log in as cloud-user / redhat123
+oc get vmi -n vmlab-student -w
+----
++
+Expected output:
++
+----
+NAME              AGE   PHASE        IP    NODENAME   READY
+rhel9-webserver   <age> Scheduling                    False
+rhel9-webserver   <age> Running   10.<x>.<y>.<z> ip-<nodename>.us-east-2.compute.internal   True
+----
+
+. Generate SSH key
++
+[source, bash]
+----
+ssh-keygen
+----
++
+NOTE: Use <CR> for each question
+
+. Copy the publick key to your clipboard
++
+[source, bash]
+----
+cat ~/.ssh/id_rsa.pub
+----
++
+Expected output:
++
+----
+ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABgQC6K3QfkXhrBio5lWExoRgfx+83GWW5MDFw542kAVU+8eo5YdageNRezQetYTglx5B+ex/u8XfGUSui4RjNx1Z0X7Jjnz8XmaTnDqTu3SwdGyAei+h+UOSq9DkhTLc6HaEm3IoJweNxhObULYF3R+O9r2OdttngYIb02F0YomnGuxI8fvzXzI3ORjCxf6+1N3fLGpw6D+HqVEyhekqI0ZtNSNo8k9vapFT+fI0l5dBT3GVnDhtmI9JD++0QPqEB2CagOIu6XbOAfMz+/8R4MUeNE6J/lWU0MwleF6OudN/o1TZY/1jtQLTuVpGVejUwyHoCBG/h0M72EsAUd3upf8wDI1a/oTvdGyURP7mSQwqRRTSnNLbGRuo3W0BJIQW5FnVUzf461WwZ+Z0DIm65mpmpLNfeqf3aBF90OgwBOnJ1fOCfTGYu7Z9sRXMYUVgjpbdSTR1u7wovFrNvrSj8e6nPp5nHpAq5kOjvtYNo+MUQRIrvVBifbgxR2z/ExhxHlFs= lab-user@bastion.t26dj.internal
+----
+
+. Connect to you VM using the console 
++
+[source, bash]
+----
 virtctl console rhel9-webserver -n vmlab-student
-
-# Inside the VM, check uptime (note it reset after restart)
-uptime
-hostname -I
-
-# Detach from console (Ctrl+])
-
-# Open VNC session (requires X display or browser forwarding)
-virtctl vnc rhel9-webserver -n vmlab-student &
-
-# SSH through the API tunnel
-virtctl ssh cloud-user@rhel9-webserver -n vmlab-student
 ----
++
+NOTE: Use the same `cloud-user` username and `redhat123` password as earlier
 
-. Force Stop and Recovery
+. Update `/home/cloud-user/.ssh/authorized_keys` using the value from your clipboard
++
+WARNING: In a real environment you use the `cloud-init` section of the VM template to automatically drop your public key into the VM.
++
+NOTE: When done disconnect from the VM console using `exit` followed by `CTRL+5`.
+
+. SSH through the API tunnel
 +
 [source, bash]
 ----
-# Force stop the VM (simulates a hard power-off)
-virtctl stop --force --grace-period=0 rhel9-webserver -n vmlab-student
-
-# Observe: VMI is immediately deleted
-oc get vmi -n vmlab-student
-
-# The VM object persists
-oc get vm -n vmlab-student
-
-# Start the VM again
-virtctl start rhel9-webserver -n vmlab-student
-oc get vmi -n vmlab-student -w
+virtctl ssh -i ~/.ssh/id_rsa cloud-user@vm/rhel9-webserver -n vmlab-student
 ----
++
+Expected output:
++
+----
+Register this system with Red Hat Insights: rhc connect
+
+Example:
+# rhc connect --activation-key <key> --organization <org>
+
+The rhc client and Red Hat Insights will enable analytics and additional
+management capabilities on your system.
+View your connected systems at https://console.redhat.com/insights
+
+You can learn more about how to register your system 
+using rhc at https://red.ht/registration
+Last login: Tue Mar 24 21:46:59 2026
+----
++
+NOTE: When done exit your ssh session using `exit` or CTRL+d`.
 
 === Verify
 
@@ -585,43 +901,60 @@ Confirm the VMI Custom Resource is linked to the VM state
 ----
 oc get vmi -n vmlab-student
 virtctl stop --force --grace-period=0 rhel9-webserver -n vmlab-student
-oc get vmi -n vmlab-student
+oc get vmi -n vmlab-student -w
 ----
-
+ 
 Expected output:
-
+ 
 ----
+NAME              AGE   PHASE     IP             NODENAME                                   READY
+rhel9-webserver   32m   Running   10.131.0.214   ip-10-0-7-182.us-east-2.compute.internal   True
+VM rhel9-webserver was scheduled to stop
+NAME              AGE   PHASE     IP             NODENAME                                   READY
+rhel9-webserver   32m   Running   10.131.0.214   ip-10-0-7-182.us-east-2.compute.internal   False
+rhel9-webserver   32m   Succeeded                  ip-10-0-7-182.us-east-2.compute.internal   False
+rhel9-webserver   32m   Succeeded                  ip-10-0-7-182.us-east-2.compute.internal   False
+rhel9-webserver   32m   Succeeded                  ip-10-0-7-182.us-east-2.compute.internal   False
 ----
 
 Confirm status of `virt-launcher` pod
-
+ 
 [source, bash]
 ----
 oc get pod -n vmlab-student | grep virt-launcher
 ----
-
+ 
 Expected output:
-
+ 
 ----
+No resources found in vmlab-student namespace.
 ----
 
 Confirm what happens when the VM restarts
-
+ 
 [source, bash]
 ----
 virtctl start rhel9-webserver -n vmlab-student
-oc get vmi -n vmlab-student
+oc get vmi -n vmlab-student -w
 ----
-
+ 
 Expected output:
-
+ 
 ----
+VM rhel9-webserver was scheduled to start
+NAME              AGE   PHASE        IP    NODENAME   READY
+rhel9-webserver   0s    Scheduling                    False
+rhel9-webserver   12s   Scheduled          ip-10-0-7-182.us-east-2.compute.internal   False
+rhel9-webserver   13s   Scheduled          ip-10-0-7-182.us-east-2.compute.internal   False
+rhel9-webserver   13s   Running      10.131.0.216   ip-10-0-7-182.us-east-2.compute.internal   False
+rhel9-webserver   13s   Running      10.131.0.216   ip-10-0-7-182.us-east-2.compute.internal   True
+rhel9-webserver   13s   Running      10.131.0.216   ip-10-0-7-182.us-east-2.compute.internal   True
 ----
 
 Expected output should show the following
 
-* The status of the `virt-launcher` when VM is paused
-* The VMI name after a restart
+* The status of the `virt-launcher` when VM is stopped
+* A new VMI object is created upon a restart
 
 == Snapshots
 
@@ -692,9 +1025,15 @@ virtctl start <vm-name> -n <namespace>
 +
 [source, bash]
 ----
-# Stop the VM for a consistent snapshot
 virtctl stop rhel9-webserver -n vmlab-student
 ----
++
+Expected output:
++
+----
+VM rhel9-webserver was scheduled to stop
+----
+
 
 . Snapshot the virtual machine
 +
@@ -712,9 +1051,29 @@ spec:
     kind: VirtualMachine
     name: rhel9-webserver
 EOF
+----
++
+Expected output:
++
+----
+virtualmachinesnapshot.snapshot.kubevirt.io/rhel9-webserver-pre-change created
+----
 
+. Verify the snapshot exists and succeeded
++
+[source, bash]
+----
 oc get vmsnapshot -n vmlab-student -w
 ----
++
+Expected output:
++
+----
+NAME                         SOURCEKIND       SOURCENAME        PHASE       READYTOUSE   CREATIONTIME   ERROR
+rhel9-webserver-pre-change   VirtualMachine   rhel9-webserver   Succeeded   true         5s  
+----
++
+TIP: Verify the snapshot `PHASE=Succeeded` and `READYTOUSE=true`.
 
 . Restart the virtual machine
 +
@@ -722,12 +1081,18 @@ oc get vmsnapshot -n vmlab-student -w
 ----
 virtctl start rhel9-webserver -n vmlab-student
 ----
++
+Expected output:
++
+----
+VM rhel9-webserver was scheduled to start
+----
 
 . Simulate failure
 +
 [source, bash]
 ----
-virtctl ssh cloud-user@rhel9-webserver -n vmlab-student
+virtctl ssh -i ~/.ssh/id_rsa cloud-user@vm/rhel9-webserver -n vmlab-student
 sudo systemctl stop httpd
 sudo dnf remove -y httpd
 ----
@@ -736,16 +1101,24 @@ sudo dnf remove -y httpd
 +
 [source, bash]
 ----
-curl http://localhost   # Should fail
-exit
+curl http://localhost
+curl: (7) Failed to connect to localhost port 80: Connection refused
 ----
++
+NOTE: Disconnect from the virtual machine using `exit` followed by `CTRL+5`
+
 
 . Stop the virtual machine
 +
 [source, bash]
 ----
 virtctl stop rhel9-webserver -n vmlab-student
-
+----
++
+Expected output:
++
+----
+VM rhel9-webserver was scheduled to stop
 ----
 
 . Restore the virtual machine
@@ -765,15 +1138,41 @@ spec:
     name: rhel9-webserver
   virtualMachineSnapshotName: rhel9-webserver-pre-change
 EOF
+----
++
+Expected output:
++
+----
+virtualmachinerestore.snapshot.kubevirt.io/rhel9-webserver-restore-pre created
+----
 
+. Verify the status of the restore
++
+[source, bash]
+----
 oc get vmrestore rhel9-webserver-restore-pre -n vmlab-student -w
 ----
++
+Expected output:
++
+----
+NAME                          TARGETKIND       TARGETNAME        COMPLETE   RESTORETIME
+rhel9-webserver-restore-pre   VirtualMachine   rhel9-webserver   true       10s
+----
++
+NOTE: Verify the status of the restore shows `COMPLETE=true`
 
 . Restart the virtual machine when restore is complete
 +
 [source, bash]
 ----
 virtctl start rhel9-webserver -n vmlab-student
+----
++
+Expected output:
++
+----
+VM rhel9-webserver was scheduled to start
 ----
 
 === Verify
@@ -784,13 +1183,14 @@ Verify the webserver is opertational again
  
 [source, bash]
 ----
-virtctl ssh cloud-user@rhel9-webserver -n vmlab-student \
-  -- 'curl http://localhost'
+virtctl ssh -i ~/.ssh/id_rsa cloud-user@vm/rhel9-webserver -n vmlab-student \
+  -c 'curl http://localhost' 2>/dev/null
 ----
 
 Expected output:
 
 ----
+This is the WEB server before failure.
 ----
 
 Expected output should show the following
@@ -880,7 +1280,7 @@ By completing this module, you should now understand:
 * How to create virtual machines
 * How to alter the state of virtual machines
 * How to connect to virtual machines
-* How to snapshot virtual machines
+* How to snapshot virtual machines as a user
 * How to restore virtual machines as a user
 
 == Module summary
@@ -891,6 +1291,8 @@ You have successfully explored the OpenShift Virtualization lifecycle management
 
 * Navigate and identify Red Hat OpenShift Virtualixation CRs
 * Interact with the state of a virtual machine
+* Connect to your virtual machine
+* Backed up and restored a virtual machine using snapshots
 
 **Key takeaways:**
 
