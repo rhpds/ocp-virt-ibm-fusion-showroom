@@ -284,7 +284,7 @@ image::03-module-01-FusionUI-BnR-NewInstall-4.png[Start the Deployment of the Ba
 +
 image::03-module-01-FusionUI-BnR-NewInstall-5.png[Deployment of the Backup & Restore Service started,link=self,window=blank,width=700,title="IBM Fusion Backup & Restore is being installed"]
 
-This completes this part of the lab. The IBM Fusion Backup & Restore functionality will be configured and used in the optional **Module 5**.
+This completes this part of the lab. The IBM Fusion Backup & Restore functionality will be configured and used in the optional **Module 4**.
 
 [[exercise-4]]
 == Exercise 4: Creating your first virtual machine
