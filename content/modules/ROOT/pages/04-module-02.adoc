@@ -247,6 +247,8 @@ spec:
             user: cloud-user
             password: redhat123
             chpasswd: { expire: False }
+            ssh_authorized_keys:
+              - {PUBKEY}
             yum_repos:
               baseos:
                 name: CentOS Stream 9 BaseOS
@@ -283,6 +285,38 @@ spec:
           namespace: openshift-virtualization-os-images
 EOF
 ----
+
+. Generate SSH key
++
+[source, bash]
+----
+ssh-keygen
+----
++
+NOTE: Use <CR> for each question
+
+. Verify the publick key has been generated
++
+[source, bash]
+----
+cat ~/.ssh/id_rsa.pub
+----
++
+Expected output:
++
+----
+ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABgQC6K3QfkXhrBio5lWExoRgfx+83GWW5MDFw542kAVU+8eo5YdageNRezQetYTglx5B+ex/u8XfGUSui4RjNx1Z0X7Jjnz8XmaTnDqTu3SwdGyAei+h+UOSq9DkhTLc6HaEm3IoJweNxhObULYF3R+O9r2OdttngYIb02F0YomnGuxI8fvzXzI3ORjCxf6+1N3fLGpw6D+HqVEyhekqI0ZtNSNo8k9vapFT+fI0l5dBT3GVnDhtmI9JD++0QPqEB2CagOIu6XbOAfMz+/8R4MUeNE6J/lWU0MwleF6OudN/o1TZY/1jtQLTuVpGVejUwyHoCBG/h0M72EsAUd3upf8wDI1a/oTvdGyURP7mSQwqRRTSnNLbGRuo3W0BJIQW5FnVUzf461WwZ+Z0DIm65mpmpLNfeqf3aBF90OgwBOnJ1fOCfTGYu7Z9sRXMYUVgjpbdSTR1u7wovFrNvrSj8e6nPp5nHpAq5kOjvtYNo+MUQRIrvVBifbgxR2z/ExhxHlFs= lab-user@bastion.t26dj.internal
+----
+
+. Customize your VM custom resource before we create it using your new SSH key
++
+[source, bash]
+----
+export THEKEY=$(cat ~/.ssh/id_rsa.pub)
+sed -i -e "s_{PUBKEY}_${THEKEY}_g" rhel9-webserver.yaml
+----
++
+NOTE: We are using `_` as a delimiter for the `sed` command knowing that the generated public key may contain `/` characters.
 
 . Apply the manifest to create the virtual machine
 +
@@ -644,17 +678,17 @@ virtctl vnc <vm-name> -n <namespace>
 ==== SSH via API Tunnel
 
 The `virtctl ssh` subcommand tunnels SSH through the Kubernetes API, avoiding the need to expose SSH ports via a Service or route.
-
+ 
 [source,bash]
 ----
 # SSH using cloud-user and the injected key
 virtctl ssh cloud-user@vm/<vm-name> -n <namespace>
 
 # Use a specific private key
-virtctl ssh cloud-user@<vm-name> -n <namespace> \
+virtctl ssh cloud-user@vm/<vm-name> -n <namespace> \
   --local-ssh-opts='-i ~/.ssh/id_rsa'
 ----
-+
+ 
 TIP: You can also use the VMI to `ssh` into the virtual machine
 
 === Storage Concepts
@@ -830,43 +864,6 @@ rhel9-webserver   <age> Scheduling                    False
 rhel9-webserver   <age> Running   10.<x>.<y>.<z> ip-<nodename>.us-east-2.compute.internal   True
 ----
 
-. Generate SSH key
-+
-[source, bash]
-----
-ssh-keygen
-----
-+
-NOTE: Use <CR> for each question
-
-. Copy the publick key to your clipboard
-+
-[source, bash]
-----
-cat ~/.ssh/id_rsa.pub
-----
-+
-Expected output:
-+
-----
-ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABgQC6K3QfkXhrBio5lWExoRgfx+83GWW5MDFw542kAVU+8eo5YdageNRezQetYTglx5B+ex/u8XfGUSui4RjNx1Z0X7Jjnz8XmaTnDqTu3SwdGyAei+h+UOSq9DkhTLc6HaEm3IoJweNxhObULYF3R+O9r2OdttngYIb02F0YomnGuxI8fvzXzI3ORjCxf6+1N3fLGpw6D+HqVEyhekqI0ZtNSNo8k9vapFT+fI0l5dBT3GVnDhtmI9JD++0QPqEB2CagOIu6XbOAfMz+/8R4MUeNE6J/lWU0MwleF6OudN/o1TZY/1jtQLTuVpGVejUwyHoCBG/h0M72EsAUd3upf8wDI1a/oTvdGyURP7mSQwqRRTSnNLbGRuo3W0BJIQW5FnVUzf461WwZ+Z0DIm65mpmpLNfeqf3aBF90OgwBOnJ1fOCfTGYu7Z9sRXMYUVgjpbdSTR1u7wovFrNvrSj8e6nPp5nHpAq5kOjvtYNo+MUQRIrvVBifbgxR2z/ExhxHlFs= lab-user@bastion.t26dj.internal
-----
-
-. Connect to you VM using the console 
-+
-[source, bash]
-----
-virtctl console rhel9-webserver -n vmlab-student
-----
-+
-NOTE: Use the same `cloud-user` username and `redhat123` password as earlier
-
-. Update `/home/cloud-user/.ssh/authorized_keys` using the value from your clipboard
-+
-WARNING: In a real environment you use the `cloud-init` section of the VM template to automatically drop your public key into the VM.
-+
-NOTE: When done disconnect from the VM console using `exit` followed by `CTRL+5`.
-
 . SSH through the API tunnel
 +
 [source, bash]
@@ -892,6 +889,8 @@ Last login: Tue Mar 24 21:46:59 2026
 ----
 +
 NOTE: When done exit your ssh session using `exit` or CTRL+d`.
++
+TIP: Remember you injected your SSH key in the VM custom resource in the first exercise
 
 === Verify
 
