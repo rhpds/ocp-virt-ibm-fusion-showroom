@@ -888,7 +888,7 @@ using rhc at https://red.ht/registration
 Last login: Tue Mar 24 21:46:59 2026
 ----
 +
-NOTE: When done exit your ssh session using `exit` or CTRL+d`.
+NOTE: When done exit your ssh session using `exit` or `CTRL+d`.
 +
 TIP: Remember you injected your SSH key in the VM custom resource in the first exercise
 
