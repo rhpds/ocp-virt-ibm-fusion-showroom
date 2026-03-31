@@ -21,7 +21,7 @@ By default, live migration traffic is encrypted using Transport Layer Security (
 
 By the end of this module, you will be able to:
 
-* Objective 1
+* Migrate VM 
 * Objective 2
 * Objective n
 
