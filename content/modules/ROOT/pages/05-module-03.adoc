@@ -4,10 +4,18 @@ include::partial$_attributes.adoc[]
 :toc: macro
 :toclevels: 1
 
-// TODO: Intro for the module
-Modernizing virtualization starts with understanding the platform. Before you can migrate workloads or build new VMs, you need to know what tools are available, how they fit together, and how storage integrates with compute.
+In this module, we will explore how application workload running on OpenShift can be migrated "live" between worker nodes. 
 
-In this module, you will explore ...
+Live migration is the process of moving a running virtual machine (VM) to another node in the cluster without interrupting the virtual workload. Live migration enables smooth transitions during cluster upgrades or any time a node needs to be drained for maintenance or configuration changes.
+
+By default, live migration traffic is encrypted using Transport Layer Security (TLS).
+
+=== Live migration requirements. 
+
+* The cluster must have shared storage with ReadWriteMany (RWX) access mode.
+* The cluster must have sufficient RAM and network bandwidth.
+* If a VM uses a host model CPU, the nodes must support the CPU.
+* Configuring a dedicated Multus network for live migration is highly recommended. A dedicated network minimizes the effects of network saturation on tenant workloads during migration
 
 == Learning objectives
 
