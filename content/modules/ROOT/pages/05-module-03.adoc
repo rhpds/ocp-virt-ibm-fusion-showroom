@@ -23,21 +23,21 @@ By the end of this module, you will be able to:
 
 * Migrate virtual machine between worker nodes
 * Migrate a virtual machine to a new storage class
-* Objective n
 
 [[exercise-1]]
 == Exercise 1: VM Live Migration Exercise 1
 
-In this exercise, you will ...
+In this exercise, you will create a new virtual machine and migrate it between worker nodes in an OpenShift cluster. 
 
 === Verify
 
-Confirm that ...
+Confirm that you have a virtual machine running with a storage class that is RWX. If not, you will need to create a new virtual machine and customize the VM's boot volume to a storage class that is RWX enabled. ceph RBD is capable of RWX. 
 
 [[exercise-2]]
 == Exercise 2: VM Live Migration Exercise 2
 
-In this exercise, you will ...
+In this exercise, you will perform a storage migration from the existing storage class to a new storage class. 
+
 
 === Verify
 
