@@ -17,7 +17,7 @@ By default, live migration traffic is encrypted using Transport Layer Security (
 * If a VM uses a host model CPU, the nodes must support the CPU.
 * Configuring a dedicated Multus network for live migration is highly recommended. A dedicated network minimizes the effects of network saturation on tenant workloads during migration
 
-== Learning objectives
+== Learning objectives --
 
 By the end of this module, you will be able to:
 
