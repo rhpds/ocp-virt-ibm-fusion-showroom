@@ -4,18 +4,36 @@ include::partial$_attributes.adoc[]
 :toc: macro
 :toclevels: 1
 
-// TODO: Intro for the module
-Modernizing virtualization starts with understanding the platform. Before you can migrate workloads or build new VMs, you need to know what tools are available, how they fit together, and how storage integrates with compute.
+You can protect your container workloads and virtual machines by using the IBM Fusion Backup & Restore service.
 
-In this module, you will explore ...
+In the event of data loss or corruption, such as accidental deletion or malicious ransomware attacks, a backup and restore system is needed to ensure data integrity and availability. By taking periodic backups of applications and storing them safely, you can restore your workloads during disasters, thereby minimizing downtime and data loss. Whenever disaster occurs, you can restore the workloads in place or to an alternate cluster.
+
+Backup & Restore service protects both containerized and virtual machine (VM) workloads, going beyond data protection to include the application's state and essential etcd resources. This capability is not only for stateful applications but also for stateless ones, ensuring complete restoration of functionality and configuration.
+
+Backup and restore works by first choosing a secure backup location and then defining backup polices tailored to your application needs with frequency and retention parameters. You can then associate the workloads with defined backup policies to automate and simply the backup process. Finally, you can recover the backed up workloads either in their original location or to an alternate cluster based on the requirements.
+
+For more complex scenarios or whenever you need to run tailored and repeatable workflows, you can make use of the advanced recipes provided by Backup & Restore service.
+
+Backup & Restore supports both single-cluster mode and hub and spoke model. In a single cluster mode, all backup and restore operations are managed within a single cluster. In case of hub and spoke model, the hub acts as a central management point and spokes are individual clusters that run backup and restore tasks locally. You can choose this mode to manage backups across multiple clusters, and it is useful for large-scale environments where multiple clusters need to be managed with resilience in case of failures.
+
+The IBM Fusion Backup & Restore service protection involves the backup of the Backup & Restore data management service itself to a S3 bucket.
+
+In this module, you will explore how to protect virtual machines with the IBM Fusion Backup and Restore Service.
 
 == Learning objectives
 
 By the end of this module, you will be able to:
 
-* Objective 1
-* Objective 2
-* Objective n
+* Define a backup S3 target
+* Create a backup policy
+* Protect an application with a backup policy
+* Backup an application 
+* Restore an application
+* Backup a Virtual Machine
+* Restore a Virtual Machine
+* Create a backup recipe
+* Assign a backup recipe to an application
+* backup and restore an application with a recipe
 
 [[exercise-1]]
 == Exercise 1: VM Live Migration Exercise 1
