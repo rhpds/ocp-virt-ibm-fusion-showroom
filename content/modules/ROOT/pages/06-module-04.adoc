@@ -36,35 +36,22 @@ By the end of this module, you will be able to:
 * backup and restore an application with a recipe
 
 [[exercise-1]]
-== Exercise 1: VM Live Migration Exercise 1
+== Exercise 1: Define S3 target location and create a backup policy.
 
-In this exercise, you will ...
-
-=== Verify
-
-Confirm that ...
 
 [[exercise-2]]
-== Exercise 2: VM Live Migration Exercise 2
+== Exercise 2: Backup and Restore an Application 
 
-In this exercise, you will ...
+[[exercise-3]]
+== Exercise 3: Backup and Restore an Virtual Machine 
 
-=== Verify
+[[exercise-4]]
+== Exercise 4: Backup and Restore an Application with a recipe
 
-Confirm that ...
-
-== Learning outcomes
-
-By completing this module, you should now understand:
-
-* How to navigate the OpenShift Virtualization interface and identify operator status
-* How IBM Fusion storage classes integrate with OpenShift to provide persistent storage for VMs
-* How to create a virtual machine from a template using the OpenShift console
-* How to verify VM status using both the console and the command line
 
 == Module summary
 
-You have successfully explored the OpenShift Virtualization environment and created your first VM.
+You have successfully explored the IBM Fusion Backup and Restore Service.
 
 **What you accomplished:**
 
