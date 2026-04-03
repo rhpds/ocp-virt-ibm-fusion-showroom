@@ -24,19 +24,49 @@ In this module, you will explore how to protect virtual machines with the IBM Fu
 
 By the end of this module, you will be able to:
 
-* Define a backup S3 target
-* Create a backup policy
-* Protect an application with a backup policy
-* Backup an application 
-* Restore an application
-* Backup a Virtual Machine
-* Restore a Virtual Machine
-* Create a backup recipe
-* Assign a backup recipe to an application
-* backup and restore an application with a recipe
+* Configure and use the backup and restore functions of IBM Fusion
+** Learn how to define and configure backup locations and policies.
+** Learn how to assign backup policies to applications.
+** Learn how to restore an application.
+** Learn how to monitor the status of backups and jobs.
+** Learn how to create a recipe and assign the recipe to applications for application-consistent backups.
+** Learn how to configure protection of the backup and restore service.
+
+== Pre-steps
+To complete the activities included in this lab, the IBM Fusion operator and IBM Fusion backup & restore service need to be installed. You will have had to complete Module 1, exercise 3 to proceed with this section.
 
 [[exercise-1]]
-== Exercise 1: Define S3 target location and create a backup policy.
+== Exercise 1: Create Backup Locations and Policies
+
+Applications have different requirements for backup frequency and retention. IBM Fusion uses Backup Policies to define and automate backup operations.
+
+To configure backup and restore activities, go to the Backup & Restore section on the left-hand side navigation pane. To access the Overview page for Backup & Restore, click on the Backup & Restore (A) menu item shown in the left-hand side navigation pane and select the Overview (B) sub-item.
+
+image::06-module-04-bandrl-overview.png[Protect your application from data corruption and loss,link=self,window=blank,width=700,title="Backup and Restore Overview"]
+
+=== S3 Backup Bucket
+
+Data Foundation must be installed and setup. In the OpenShift Console, navigate to “Data Foundation” -> “object storage” and select the tab “Object Bucket Claims”
+
+image::06-module-04-datafoundation.png[Data Foundation,link=self,window=blank,width=700,title="Data Foundation"]
+
+Click create ObjectBucketClaim
+
+image::06-module-04-objectbucketclaim.png[Data Foundation Object Bucket Claim,link=self,window=blank,width=700,title="Object Bucket Claim"]
+
+Once the bucket claim is created, scroll down and reveal values
+
+image::06-module-04-objectbucketclaimvalues.png[Data Foundation Object Bucket Claim values,link=self,window=blank,width=700,title="Object Bucket Claim Values"]
+
+We will use the “Bucket Name”, “Access Key” and “Secret Key”.
+
+Next we need to get the external endpoint
+Navigate to “networking” -> “routes” and choose all projects and search for “S3”
+
+image::06-module-04-objectbuckets3routes.png[Data Foundation S3 Routes values,link=self,window=blank,width=700,title="Object Bucket S3 Routes"]
+
+There you will find the correct route to use.
+
 
 
 [[exercise-2]]
