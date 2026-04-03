@@ -67,6 +67,30 @@ image::06-module-04-objectbuckets3routes.png[Data Foundation S3 Routes values,li
 
 There you will find the correct route to use.
 
+=== Backup Location
+
+In the Fusion GUI, navigate to the Locations screen by clicking on the Backup & restore (A) menu item shown in the left-hand side navigation pane and selecting the Locations (B) sub-item. When the Locations screen is shown, click the Add location + (C) button and use the wizard to provide the appropriate S3 endpoint information and credentials.
+
+image::06-module-04-bnr-locationss.png[Back and Restore Locations ,link=self,window=blank,width=700,title="Back and Restore Locations"]
+
+Enter "Location1" (or any name of your choosing) in the Location name text entry field and click the MCG/NooBass (B) tile. Then, click "Next" to enter the connection details. 
+
+Enter the S3 endpoint and connection information collected in the previous steps
+
+image::06-module-04-bnr-locations-details.png[Back and Restore Location Details ,link=self,window=blank,width=700,title="Back and Restore Location Details"]
+
+The newly added backup location should appear in a new tile and be connected after a few seconds.
+
+image::06-module-04-bnr-locations-added.png[Back and Restore Location Details Added,link=self,window=blank,width=700,title="Back and Restore Location Details Added"]
+
+=== Backup Policies
+
+A backup policy is a set of rules and schedules that define how and when data is backed up. It outlines the frequency of backups, the type of data to be backed up, the retention period, and the storage location. The Backup & Restore service allows you to create and manage backup policies to ensure your data is protected according to your specific needs.
+
+The Policies page lists all policies. You can search for policy records based on the backup location or other keywords, configure the table display, and perform actions like viewing, editing, or deleting policies from the ellipsis overflow menu.
+
+In the Fusion GUI, navigate to the Policies screen by clicking on the Backup & restore (A) menu item shown in the left-hand side navigation pane and selecting the Policies (B) sub-item. When the Policies screen is shown, click the Add policy + (C) button to configure a backup policy. 
+
 
 
 [[exercise-2]]
