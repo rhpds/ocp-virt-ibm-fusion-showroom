@@ -91,7 +91,23 @@ The Policies page lists all policies. You can search for policy records based on
 
 In the Fusion GUI, navigate to the Policies screen by clicking on the Backup & restore (A) menu item shown in the left-hand side navigation pane and selecting the Policies (B) sub-item. When the Policies screen is shown, click the Add policy + (C) button to configure a backup policy. 
 
+image::06-module-04-bnr-policies.png[Back and Restore Policies,link=self,window=blank,width=700,title="Back and Restore Policies"]
 
+Enter daily-snapshot (A) in the Policy Name text entry field, set Frequency to Daily and specify a Time window for the backup to occur. Then, select the In place snapshot (B) Backup location tile. Finally, click the Next (C) button to create the new daily-snapshot backup policy.
+
+image::06-module-04-bnr-policy-create.png[Back and Restore Policy Create,link=self,window=blank,width=700,title="Back and Restore Policy Create"]
+
+The daily-snapshot policy will now appear in the list of backup policies. Next, we will create a weekly-backup policy using object storage as the backup location. Click the Add policy + (A) button to begin.
+
+image::06-module-04-bnr-policy-new.png[Back and Restore Policy New,link=self,window=blank,width=700,title="Back and Restore Policy New"]
+
+(A) Enter weekly-backup in the Policy name text entry field, set Frequency to weekly (B), select Sunday (C) for Schedule, and specify a Time window for the backup to occur. Select the Object Storage (D) Backup location tile to pick the backup location object1 (E). Click the Create policy (F) button to complete creation of the weekly-backup backup policy.
+
+image::06-module-04-bnr-policy-weekly.png[Back and Restore Policy New Weekly,link=self,window=blank,width=700,title="Back and Restore Policy Weekly"]
+
+The Policies summary screen shows where backups are stored, the schedule for each policy, and the application that uses the policy.
+
+image::06-module-04-bnr-policy-summary.png[Back and Restore Policy New summary,link=self,window=blank,width=700,title="Back and Restore Policy Summary"]
 
 [[exercise-2]]
 == Exercise 2: Backup and Restore an Application 
