@@ -1,0 +1,165 @@
+= Module 4: IBM Fusion Backup and Restore
+include::partial$_attributes.adoc[]
+:source-highlighter: rouge
+:toc: macro
+:toclevels: 1
+
+You can protect your container workloads and virtual machines by using the IBM Fusion Backup & Restore service.
+
+In the event of data loss or corruption, such as accidental deletion or malicious ransomware attacks, a backup and restore system is needed to ensure data integrity and availability. By taking periodic backups of applications and storing them safely, you can restore your workloads during disasters, thereby minimizing downtime and data loss. Whenever disaster occurs, you can restore the workloads in place or to an alternate cluster.
+
+Backup & Restore service protects both containerized and virtual machine (VM) workloads, going beyond data protection to include the application's state and essential etcd resources. This capability is not only for stateful applications but also for stateless ones, ensuring complete restoration of functionality and configuration.
+
+Backup and restore works by first choosing a secure backup location and then defining backup polices tailored to your application needs with frequency and retention parameters. You can then associate the workloads with defined backup policies to automate and simply the backup process. Finally, you can recover the backed up workloads either in their original location or to an alternate cluster based on the requirements.
+
+For more complex scenarios or whenever you need to run tailored and repeatable workflows, you can make use of the advanced recipes provided by Backup & Restore service.
+
+Backup & Restore supports both single-cluster mode and hub and spoke model. In a single cluster mode, all backup and restore operations are managed within a single cluster. In case of hub and spoke model, the hub acts as a central management point and spokes are individual clusters that run backup and restore tasks locally. You can choose this mode to manage backups across multiple clusters, and it is useful for large-scale environments where multiple clusters need to be managed with resilience in case of failures.
+
+The IBM Fusion Backup & Restore service protection involves the backup of the Backup & Restore data management service itself to a S3 bucket.
+
+In this module, you will explore how to protect virtual machines with the IBM Fusion Backup and Restore Service.
+
+== Learning objectives
+
+By the end of this module, you will be able to:
+
+* Configure and use the backup and restore functions of IBM Fusion
+** Learn how to define and configure backup locations and policies.
+** Learn how to assign backup policies to applications.
+** Learn how to restore an application.
+** Learn how to monitor the status of backups and jobs.
+** Learn how to create a recipe and assign the recipe to applications for application-consistent backups.
+** Learn how to configure protection of the backup and restore service.
+
+== Pre-steps
+To complete the activities included in this lab, the IBM Fusion operator and IBM Fusion backup & restore service need to be installed. You will have had to complete Module 1, exercise 3 to proceed with this section.
+
+[[exercise-1]]
+== Exercise 1: Create Backup Locations and Policies
+
+Applications have different requirements for backup frequency and retention. IBM Fusion uses Backup Policies to define and automate backup operations.
+
+To configure backup and restore activities, go to the Backup & Restore section on the left-hand side navigation pane. To access the Overview page for Backup & Restore, click on the Backup & Restore (A) menu item shown in the left-hand side navigation pane and select the Overview (B) sub-item.
+
+image::06-module-04-bandrl-overview.png[Protect your application from data corruption and loss,link=self,window=blank,width=700,title="Backup and Restore Overview"]
+
+=== S3 Backup Bucket
+
+Data Foundation must be installed and setup. In the OpenShift Console, navigate to “Data Foundation” -> “object storage” and select the tab “Object Bucket Claims”
+
+image::06-module-04-datafoundation.png[Data Foundation,link=self,window=blank,width=700,title="Data Foundation"]
+
+Click create ObjectBucketClaim
+
+image::06-module-04-objectbucketclaim.png[Data Foundation Object Bucket Claim,link=self,window=blank,width=700,title="Object Bucket Claim"]
+
+Once the bucket claim is created, scroll down and reveal values
+
+image::06-module-04-objectbucketclaimvalues.png[Data Foundation Object Bucket Claim values,link=self,window=blank,width=700,title="Object Bucket Claim Values"]
+
+We will use the “Bucket Name”, “Access Key” and “Secret Key”.
+
+Next we need to get the external endpoint
+Navigate to “networking” -> “routes” and choose all projects and search for “S3”
+
+image::06-module-04-objectbuckets3routes.png[Data Foundation S3 Routes values,link=self,window=blank,width=700,title="Object Bucket S3 Routes"]
+
+There you will find the correct route to use.
+
+=== Backup Location
+
+In the Fusion GUI, navigate to the Locations screen by clicking on the Backup & restore (A) menu item shown in the left-hand side navigation pane and selecting the Locations (B) sub-item. When the Locations screen is shown, click the Add location + (C) button and use the wizard to provide the appropriate S3 endpoint information and credentials.
+
+image::06-module-04-bnr-locationss.png[Back and Restore Locations ,link=self,window=blank,width=700,title="Back and Restore Locations"]
+
+Enter "Location1" (or any name of your choosing) in the Location name text entry field and click the MCG/NooBass (B) tile. Then, click "Next" to enter the connection details. 
+
+Enter the S3 endpoint and connection information collected in the previous steps
+
+image::06-module-04-bnr-locations-details.png[Back and Restore Location Details ,link=self,window=blank,width=700,title="Back and Restore Location Details"]
+
+The newly added backup location should appear in a new tile and be connected after a few seconds.
+
+image::06-module-04-bnr-locations-added.png[Back and Restore Location Details Added,link=self,window=blank,width=700,title="Back and Restore Location Details Added"]
+
+=== Backup Policies
+
+A backup policy is a set of rules and schedules that define how and when data is backed up. It outlines the frequency of backups, the type of data to be backed up, the retention period, and the storage location. The Backup & Restore service allows you to create and manage backup policies to ensure your data is protected according to your specific needs.
+
+The Policies page lists all policies. You can search for policy records based on the backup location or other keywords, configure the table display, and perform actions like viewing, editing, or deleting policies from the ellipsis overflow menu.
+
+In the Fusion GUI, navigate to the Policies screen by clicking on the Backup & restore (A) menu item shown in the left-hand side navigation pane and selecting the Policies (B) sub-item. When the Policies screen is shown, click the Add policy + (C) button to configure a backup policy. 
+
+image::06-module-04-bnr-policies.png[Back and Restore Policies,link=self,window=blank,width=700,title="Back and Restore Policies"]
+
+Enter daily-snapshot (A) in the Policy Name text entry field, set Frequency to Daily and specify a Time window for the backup to occur. Then, select the In place snapshot (B) Backup location tile. Finally, click the Next (C) button to create the new daily-snapshot backup policy.
+
+image::06-module-04-bnr-policy-create.png[Back and Restore Policy Create,link=self,window=blank,width=700,title="Back and Restore Policy Create"]
+
+The daily-snapshot policy will now appear in the list of backup policies. Next, we will create a weekly-backup policy using object storage as the backup location. Click the Add policy + (A) button to begin.
+
+image::06-module-04-bnr-policy-new.png[Back and Restore Policy New,link=self,window=blank,width=700,title="Back and Restore Policy New"]
+
+(A) Enter weekly-backup in the Policy name text entry field, set Frequency to weekly (B), select Sunday (C) for Schedule, and specify a Time window for the backup to occur. Select the Object Storage (D) Backup location tile to pick the backup location object1 (E). Click the Create policy (F) button to complete creation of the weekly-backup backup policy.
+
+image::06-module-04-bnr-policy-weekly.png[Back and Restore Policy New Weekly,link=self,window=blank,width=700,title="Back and Restore Policy Weekly"]
+
+The Policies summary screen shows where backups are stored, the schedule for each policy, and the application that uses the policy.
+
+image::06-module-04-bnr-policy-summary.png[Back and Restore Policy New summary,link=self,window=blank,width=700,title="Back and Restore Policy Summary"]
+
+[[exercise-2]]
+== Exercise 2: Backup and Restore an Application 
+
+In this section, you’ll learn how to create a basic application to demonstrate core functionality and prepare for backup and restore operations.
+
+=== Create a simple application
+
+In the OpenShift GUI, navigate to the Projects screen by clicking on the Home (A) menu item in the left-hand side navigation pane and selecting the Projects (B) sub-item. When the Projects screen is shown, click the Create Project (C) button.
+
+image::06-module-04-bnr-create-project.png[Create New Project,link=self,window=blank,width=700,title="Create New Project"]
+
+(A) Enter the value filebrowser in the Name text entry field and click the Create (B) button.
+
+image::06-module-04-bnr-create-project-new.png[Create New Project,link=self,window=blank,width=700,title="Create New Project"]
+
+Verify that the project listed is set to the newly created filebrowser namespace. Click the Import YAML (A) (the icon that looks like a + sign) button on the OpenShift GUI masthead.
+
+image::06-module-04-bnr-verify-project.png[Varify New Project,link=self,window=blank,width=700,title="Varify New Project"]
+
+Navigate to the filebrowser-all.yaml file hosted in GitHub, https://github.com/matt-levan/fusion-l4-material/blob/main/backuprestore-lab/filebrowser-all.yaml. Click the Copy raw file (A) button (the icon that looks like 2 overlapping windows) to copy the contents of the file to the clipboard
+
+
+image::06-module-04-bnr-verify-project.png[Varify New Project,link=self,window=blank,width=700,title="Varify New Project"]
+
+[[exercise-3]]
+== Exercise 3: Backup and Restore an Virtual Machine 
+
+[[exercise-4]]
+== Exercise 4: Backup and Restore an Application with a recipe
+
+
+== Module summary
+
+You have successfully explored the IBM Fusion Backup and Restore Service.
+
+**What you accomplished:**
+
+* Navigated the OpenShift Virtualization dashboard and identified key components
+* Examined IBM Fusion storage classes and verified storage integration
+* Created a RHEL 9 virtual machine from a template
+* Verified VM and storage status using both the console and CLI
+
+**Key takeaways:**
+
+* OpenShift Virtualization runs VMs as native Kubernetes resources alongside containers
+* IBM Fusion provides enterprise storage features including snapshots and ReadWriteMany access
+* VM creation follows familiar patterns, whether using templates or custom specifications
+* Both the web console and CLI are available for VM management and troubleshooting
+
+**Next steps:**
+
+Module 4 will cover IBM Fusion Backup and Restore service
+
+== Assets needed
