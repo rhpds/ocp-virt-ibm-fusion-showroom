@@ -600,7 +600,7 @@ In the popup dialog enter `pacman` as the name.
 
 image::06-module-04-bnr-create-pm-project-yaml.png[create pacman project,link=self,window=blank,width=700,title="Create PacMan Project"]
 
-Use the following YAML file to create the PacMan Application in the "pacman" namespace.
+Use the following YAML file to create the PacMan Application in the `pacman` namespace.
 
 [source,bash]
 ----
