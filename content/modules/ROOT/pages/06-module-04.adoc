@@ -50,7 +50,7 @@ Data Foundation must be installed and setup. In the OpenShift Console, navigate 
 
 image::06-module-04-datafoundation.png[Data Foundation,link=self,window=blank,width=700,title="Data Foundation"]
 
-Change to the "ibm-backup-restore" Project.
+Change to the `ibm-backup-restore` Project.
 
 image::06-module-04-storage-project.png[IBM Storage Project,link=self,window=blank,width=700,title="IBM Storage Project"]
 
@@ -66,7 +66,7 @@ image::06-module-04-objectbucketclaimvalues.png[Data Foundation Object Bucket Cl
 We will use the `Bucket Name`, `Access Key` and `Secret Key`.
 
 Next we need to get the external endpoint
-Navigate to “networking” -> “routes” and choose all projects and search for “S3”
+Navigate to `networking` -> `routes` and choose all projects and search for `S3`
 
 image::06-module-04-objectbuckets3routes.png[Data Foundation S3 Routes values,link=self,window=blank,width=700,title="Object Bucket S3 Routes"]
 
@@ -524,7 +524,7 @@ In the OpenShift GUI, navigate to the Projects screen by clicking on the Home (A
 
 image::06-module-04-bnr-create-pm-project.png[create pacman project,link=self,window=blank,width=700,title="Create PacMan Project"]
 
-In the popup dialog enter "pacman" as the name.
+In the popup dialog enter `pacman` as the name.
 
 image::06-module-04-bnr-create-pm-project-yaml.png[create pacman project,link=self,window=blank,width=700,title="Create PacMan Project"]
 
@@ -686,7 +686,7 @@ In the OpenShift GUI, navigate to the Search screen by clicking on the Home (A) 
 
 image::06-module-04-bnr-policy-search.png[Search,link=self,window=blank,width=700,title="Search"]
 
-Change to the ibm-spectrum-fusion-ns project, if not already there. Refer to section OpenShift project selector on how to use the project selector. Open the drop-down list associated with the “Resources” (A) field and (B) enter policyassignment in the search box text entry field (displayed with a magnifying glass). Select the PolicyAssignment (C). Click anywhere outside the drop-down list to dismiss the window.
+Change to the ibm-spectrum-fusion-ns project, if not already there. Refer to section OpenShift project selector on how to use the project selector. Open the drop-down list associated with the `Resources` (A) field and (B) enter policyassignment in the search box text entry field (displayed with a magnifying glass). Select the PolicyAssignment (C). Click anywhere outside the drop-down list to dismiss the window.
 
 image::06-module-04-bnr-project-selector.png[Project Selector,link=self,window=blank,width=700,title="Project Selector"]
 

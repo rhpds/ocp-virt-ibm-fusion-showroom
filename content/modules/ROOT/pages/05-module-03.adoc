@@ -47,7 +47,7 @@ Confirm that you have a virtual machine running with a storage class that is RWX
 
 ==== Create or Select a Virtual Machine
 
-Create a new Virtual Machine (VM) or select a VM from a previous you created in a previous section of this lab.
+Create a new Virtual Machine (VM) or select a VM from a previous you created in a previous section of this lab. 
 
 Once you have a VM, make sure the VM is in the running state.
 
