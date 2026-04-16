@@ -450,12 +450,81 @@ image::06-module-04-bnr-service-backup-policy.png[Service Protection backup Poli
 Confirm that backup service protection has been enabled for the IBM Fusion Backup & restore service.
 
 image::06-module-04-bnr-service-enable.png[Service Protection Enable,link=self,window=blank,width=700,title="Service Protection Enable"]
-image::06-module-04-bnr-service-backup-policy.png[Service Protection backup Policy,link=self,window=blank,width=700,title="Service Protection Backup Policy"]
 
+[[exercise-5]]
+== Exercise 5: Backup and Restore Virtual Machines
 
+=== Backup a Virtual Machine
+
+In the Administrative View, create a new project called "vmbackup"
+
+Create a new Virtual Machine from the Catalog using the Red Hat Enterprise Linux 9 VM template. Use the name rhel9-backup.
+
+Launch the Fusion User Interface by clicking the Application menu icon (looks like 9 squares) and then click IBM Storage Fusion. If prompted, enter kubeadmin and your kubeadmin password from the reservation.
+
+Navigate to the Applications screen by clicking on the Applications (A) menu item on the left-hand side navigation pane. Select the check box (B) next to vmbackup application and click on the Assign backup policy (C) button to open the Assign backup policy page.
+
+image::06-module-04-bnr-vm-backup-policy.png[VM Back up Policy,link=self,window=blank,width=700,title="VM Backup Policy"]
+
+Select the check box (A) next to weekly-backup and leave the Back up now toggle set to enabled (green with a checkmark for enabled). Click on the Save (B) button to enable the weekly-backup policy for the vmbackup application and start a new backup job. 
+
+image::06-module-04-bnr-vm-backup-set-policy.png[VM Set backup policy,link=self,window=blank,width=700,title="VM Set backup policy"]
+
+Wait for backup to show as Completed under Backup status. 
+
+image::06-module-04-bnr-vm-backup-complete.png[VM Backup Complete,link=self,window=blank,width=700,title="VM Backup Complete"]
+
+Navigate to the Jobs screen by clicking on the Backup & restore (A) menu item on the left-hand side navigation pane and selecting the Jobs (B) menu sub-item. Click on the vmbackup-weekly-backup-<OCP cluster name> (C) button to open the backup summary page.
+
+image::06-module-04-bnr-vm-backup-jobs.png[VM Backup Jobs,link=self,window=blank,width=700,title="VM Backup Jobs"]
+
+Review the information on this page. Some relevant information to the backup has been highlighted for informational purposes.
+
+image::06-module-04-bnr-vm-backup-summary.png[VM Backup Summary,link=self,window=blank,width=700,title="VM Backup Summary"]
+
+=== Restore Virtual Machine
+
+Navigate to the Backed up applications screen by clicking on the Backup & restore (A) menu item on the left-hand side navigation pane and selecting the Backed up applications (B) menu sub-item. Click on the vmbackup (C) application name to open the vmbackup backup details page.
+
+image::06-module-04-bnr-vm-backed-apps.png[VM Backed up Applications,link=self,window=blank,width=700,title="VM Backed up Applications"]
+
+Click on the Restore (A) button to begin the restore process.
+
+image::06-module-04-bnr-vm-restore.png[VM Restore,link=self,window=blank,width=700,title="VM Restore"]
+
+The wizard presents the choice to restore to the same cluster or to a different cluster, if you have a hub-spoke setup. Open the drop-down list associated with the “Target cluster” field and select the This cluster (A) item from the list.
+
+image::06-module-04-bnr-vm-restore-select-dest.png[VM Select Destination,link=self,window=blank,width=700,title="VM Restore select destination"]
+
+Click on the Create a new project (A) combo box to change the Project destination. Enter vmrestore in the Project name (B) text entry field and click the Next (C) button to continue the restore process.
+
+image::06-module-04-bnr-vm-restore-project.png[VM Restore Project,link=self,window=blank,width=700,title="VM Restore Project"]
+
+Click on the latest backup time (A) combo box (which should be the backup that was run in the previous section). Click the Next (B) button to continue to the final step of the restore process.
+
+image::06-module-04-bnr-vm-restore-select.png[VM Restore Select,link=self,window=blank,width=700,title="VM Restore Select"]
+
+Review the Summary (A) details for OpenShift Project and Restore point for accuracy. Click the Restore (B) button.
+
+image::06-module-04-bnr-vm-restore-button.png[VM Restore Button,link=self,window=blank,width=700,title="VM Restore Button"]
+
+Click the Restore (A) button again to confirm the start of the restore process.
+
+image::06-module-04-bnr-vm-confirm-restore.png[VM Confirm Restore,link=self,window=blank,width=700,title="VM Comfirm Restore"]
+
+Click on the View job details (A) button to open the vmbackup restore details page.
+
+image::06-module-04-bnr-vm-job-details.png[VM Job Details,link=self,window=blank,width=700,title="VM Job Details"]
+
+Wait for the restore backup job to show Completed. 
+
+image::06-module-04-bnr-vm-restore-complete.png[VM Restore Complete,link=self,window=blank,width=700,title="VM Restore Complete"]
+
+Return to the OpenShift GUI. Navigate to the VirtualMachines screen by clicking on the Virtualization (A) menu item on the left-hand side navigation pane and selecting the VirtualMachines (B) sub-item. Use the Project selector to change to the vmrestore (C) project. Notice that the VirtualMachine has been restored to a new namespace and is in a Running Status.
+
+image::06-module-04-bnr-vm-list-restored.png[List Restored VM,link=self,window=blank,width=700,title="List Restored VM"]
 
 == Module summary
-
 You have successfully explored the IBM Fusion Backup and Restore Service.
 
 **What you accomplished:**
@@ -464,6 +533,7 @@ You have successfully explored the IBM Fusion Backup and Restore Service.
 * Assigned backup polices to applications.
 * Restored an application to a new project.
 * Defined a backup service protection policy.
+* backup up and restored a virtual machine.
 
 **Key takeaways:**
 
