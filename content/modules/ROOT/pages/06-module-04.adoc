@@ -50,7 +50,12 @@ Data Foundation must be installed and setup. In the OpenShift Console, navigate 
 
 image::06-module-04-datafoundation.png[Data Foundation,link=self,window=blank,width=700,title="Data Foundation"]
 
+Change to the "ibm-backup-restore" Project.
+
+image::06-module-04-storage-project.png[IBM Storage Project,link=self,window=blank,width=700,title="IBM Storage Project"]
+
 Click create ObjectBucketClaim
+
 
 image::06-module-04-objectbucketclaim.png[Data Foundation Object Bucket Claim,link=self,window=blank,width=700,title="Object Bucket Claim"]
 
@@ -128,11 +133,226 @@ Verify that the project listed is set to the newly created filebrowser namespace
 
 image::06-module-04-bnr-verify-project.png[Varify New Project,link=self,window=blank,width=700,title="Varify New Project"]
 
-Navigate to the filebrowser-all.yaml file hosted in GitHub, https://github.com/matt-levan/fusion-l4-material/blob/main/backuprestore-lab/filebrowser-all.yaml. Click the Copy raw file (A) button (the icon that looks like 2 overlapping windows) to copy the contents of the file to the clipboard
+Use the following yaml file to create the filebrowser application:
 
-image::06-module-04-bnr-filebrowser-all.png[Filebrowser YAML,link=self,window=blank,width=700,title="Filebrowser YAML"]
+[source,bash]
+----
+kind: PersistentVolumeClaim
+apiVersion: v1
+metadata:
+  labels:
+    app: filebrowser
+    app.kubernetes.io/component: filebrowser
+    app.kubernetes.io/instance: filebrowser
+    app.kubernetes.io/name: filebrowser
+    app.kubernetes.io/part-of: filebrowser-app
+  name: files
+spec:
+  storageClassName: ocs-storagecluster-ceph-rbd
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 10Gi
 
-Return to the OpenShift GUI and use Ctrl-V (windows), CMD-V (Mac) or browser Edit -> Paste button to paste the contents of the clipboard into the editor (A) text entry field. Click the Create (B) button to create the filebrowser resources.
+---
+kind: PersistentVolumeClaim
+apiVersion: v1
+metadata:
+  labels:
+    app: filebrowser
+    app.kubernetes.io/component: filebrowser
+    app.kubernetes.io/instance: filebrowser
+    app.kubernetes.io/name: filebrowser
+    app.kubernetes.io/part-of: filebrowser-app
+  name: filebrowser-config
+spec:
+  storageClassName: ocs-storagecluster-ceph-rbd
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 1Gi
+
+---
+
+kind: ConfigMap
+apiVersion: v1
+metadata:
+  name: my-filebrowser-config
+  labels:
+    app: filebrowser
+    app.kubernetes.io/component: filebrowser
+    app.kubernetes.io/instance: filebrowser
+    app.kubernetes.io/name: filebrowser
+    app.kubernetes.io/part-of: filebrowser-app
+data:
+  .filebrowser.json: |
+    {
+      "port": 8080,
+      "baseURL": "",
+      "address": "",
+      "log": "stdout",
+      "database": "/config/database.db",
+      "root": "/files"
+    }
+
+---
+kind: Deployment
+apiVersion: apps/v1
+metadata:
+  name: filebrowser
+  labels:
+        app: filebrowser
+        deployment: filebrowser
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+        app: filebrowser
+  template:
+    metadata:
+      labels:
+        app: filebrowser
+        app.kubernetes.io/component: filebrowser
+        app.kubernetes.io/instance: filebrowser
+        app.kubernetes.io/name: filebrowser
+        app.kubernetes.io/part-of: filebrowser-app
+    spec:
+      restartPolicy: Always
+      serviceAccountName: default
+      schedulerName: default-scheduler
+      enableServiceLinks: true
+      terminationGracePeriodSeconds: 30
+      securityContext: {}
+      containers:
+        - resources:
+            requests:
+              cpu: "100m"
+              memory: "128Mi"
+            limits:
+              cpu: "500m"
+              memory: "512Mi"
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: 8080
+            initialDelaySeconds: 2
+            timeoutSeconds: 2
+            periodSeconds: 5
+            successThreshold: 1
+            failureThreshold: 3
+          terminationMessagePath: /dev/termination-log
+          name: filebrowser
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 8080
+            initialDelaySeconds: 10
+            timeoutSeconds: 2
+            periodSeconds: 10
+            successThreshold: 1
+            failureThreshold: 3
+          startupProbe:
+            httpGet:
+              path: /health
+              port: 8080
+            failureThreshold: 30
+            periodSeconds: 10
+          env:
+            - name: TZ
+              value: UTC
+          ports:
+            - name: http
+              containerPort: 8080
+              protocol: TCP
+          imagePullPolicy: IfNotPresent
+          securityContext:
+            runAsNonRoot: true
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop:
+                - ALL
+          volumeMounts:
+            - name: config
+              mountPath: /config
+            - name: filebrowser-config
+              mountPath: /.filebrowser.json
+              subPath: .filebrowser.json
+            - name: data
+              mountPath: /files
+          image: 'filebrowser/filebrowser:v2.18.0'
+      automountServiceAccountToken: true
+      serviceAccount: default
+      volumes:
+        - name: config
+          persistentVolumeClaim:
+            claimName: filebrowser-config
+        - name: filebrowser-config
+          configMap:
+            name: my-filebrowser-config
+            defaultMode: 420
+        - name: data
+          persistentVolumeClaim:
+            claimName: files
+      dnsPolicy: ClusterFirst
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxUnavailable: 1
+      maxSurge: 1
+  revisionHistoryLimit: 3
+  progressDeadlineSeconds: 600
+
+---
+
+kind: Service
+apiVersion: v1
+metadata:
+  name: filebrowser
+  labels:
+    app: filebrowser
+    app.kubernetes.io/component: filebrowser
+    app.kubernetes.io/instance: filebrowser
+    app.kubernetes.io/name: filebrowser
+    app.kubernetes.io/part-of: filebrowser-app
+spec:
+  ports:
+    - name: 8080-tcp
+      protocol: TCP
+      port: 8080
+      targetPort: 8080
+  type: ClusterIP
+  selector:
+    app: filebrowser
+
+---
+kind: Route
+apiVersion: route.openshift.io/v1
+metadata:
+  name: filebrowser
+  labels:
+    app: filebrowser
+    app.kubernetes.io/component: filebrowser
+    app.kubernetes.io/instance: filebrowser
+    app.kubernetes.io/name: filebrowser
+    app.kubernetes.io/part-of: filebrowser-app
+  annotations:
+    openshift.io/host.generated: 'true'
+spec:
+  to:
+    kind: Service
+    name: filebrowser
+    weight: 100
+  port:
+    targetPort: 8080-tcp
+  tls:
+    termination: edge
+    insecureEdgeTerminationPolicy: Redirect
+  wildcardPolicy: None
+----
+
+The OpenShift GUI and use Ctrl-V (windows), CMD-V (Mac) or browser Edit -> Paste button to paste the contents of the clipboard into the editor (A) text entry field. Click the Create (B) button to create the filebrowser resources.
 
 image::06-module-04-bnr-paste-yaml.png[Paste YAML,link=self,window=blank,width=700,title="Paste YAML"]
 
@@ -146,13 +366,13 @@ NOTE: It may take a minute or two for the filebrowser application to become full
 
 image::06-module-04-bnr-routes.png[Routes,link=self,window=blank,width=700,title="Routes"]
 
-Login to the File Browser application with Username (A): admin and Password (B): admin. Click the Login (C) button.
+Login to the filebrowser application with Username (A): admin and Password (B): admin. Click the Login (C) button.
 
-image::06-module-04-bnr-filebrower-login.png[Filebrowser login,link=self,window=blank,width=700,title="Filebrowser Login"]
+image::06-module-04-bnr-filebrower-login.png[filebrowser login,link=self,window=blank,width=700,title="filebrowser login"]
 
-No files will be listed in the Filebrowser application.
+No files will be listed in the filebrowser application.
 
-image::06-module-04-bnr-filebrower-files.png[Filebrowser Files,link=self,window=blank,width=700,title="Filebrowser Files"]
+image::06-module-04-bnr-filebrower-files.png[filebrowser files,link=self,window=blank,width=700,title="filebrowser files"]
 
 Use New folder (A) and Upload file (B) to create some directories and upload a couple files. In the example shown, 2 directories were created, and 3 files were uploaded.
 
@@ -274,7 +494,7 @@ Navigate to the Routes screen by clicking on the Networking (A) menu item shown 
 
 image::06-module-04-bnr-restore-routes.png[Restoring Application Routes,link=self,window=blank,width=700,title="Restoring Application Routes"]
 
-Login to the File Browser application with the Username (A): admin and Password (B): admin. Click Login (C). Review that the files added earlier have been restored to a new application project
+Login to the filebrowser application with the Username (A): admin and Password (B): admin. Click Login (C). Review that the files added earlier have been restored to a new application project
 
 image::06-module-04-bnr-application.png[Restoring Application,link=self,window=blank,width=700,title="Restoring Application"]
 
@@ -299,6 +519,146 @@ With application consistency, it’s possible to restore an application to anoth
 
 Application consistent backups are important because they ensure that important files and data are saved in a way that keeps them safe and undamaged. This means that if something goes wrong, like a computer crash or a power outage, clients can restore their files and data to the way they were before the event, without losing any important information.
 ****
+
+In the OpenShift GUI, navigate to the Projects screen by clicking on the Home (A) menu item in the left-hand side navigation pane and selecting the Projects (B) sub-item. When the Projects screen is shown, click on the Create Project (C) button.
+
+image::06-module-04-bnr-create-pm-project.png[create pacman project,link=self,window=blank,width=700,title="Create PacMan Project"]
+
+In the popup dialog enter "pacman" as the name.
+
+image::06-module-04-bnr-create-pm-project-yaml.png[create pacman project,link=self,window=blank,width=700,title="Create PacMan Project"]
+
+Use the following YAML file to create the PacMan Application in the "pacman" namespace.
+
+[source,bash]
+----
+kind: PersistentVolumeClaim
+apiVersion: v1
+metadata:
+  name: mongo-storage
+spec:
+  storageClassName: ocs-storagecluster-ceph-rbd
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 8Gi
+
+---
+
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    name: mongodb
+    app: mongodb
+  name: mongodb
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      name: mongodb
+  template:
+    metadata:
+      labels:
+        name: mongodb
+        app: mongodb
+    spec:
+      containers:
+      - image: bitnami/mongodb:5.0.24-debian-11-r20
+        name: mongodb
+        ports:
+        - name: mongodb
+          containerPort: 27017
+        volumeMounts:
+          - name: mongo-db
+            mountPath: /bitnami/mongodb/data/db
+      volumes:
+        - name: mongo-db
+          persistentVolumeClaim:
+            claimName: mongo-storage
+
+---
+
+apiVersion: v1
+kind: Service
+metadata:
+  labels:
+    name: mongodb
+  name: mongo
+spec:
+  type: ClusterIP
+  ports:
+    - port: 27017
+      targetPort: 27017
+  selector:
+    name: mongodb
+
+---
+
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    name: pacman
+  name: pacman
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      name: pacman
+  template:
+    metadata:
+      labels:
+        name: pacman
+    spec:
+      containers:
+      - image: quay.io/jpacker/nodejs-pacman-app:latest
+        name: pacman
+        ports:
+        - containerPort: 8080
+          name: http-server
+      initContainers:
+      - name: db-check
+        image: busybox:latest
+        command: ['sh', '-c', 'echo -e "Checking for the availability of MongoDB Server deployment"; while ! nc -z mongo 27017; do sleep 1; printf "-"; done; echo -e "  >> MongoDB Server has started";']
+ 
+
+---
+
+apiVersion: v1
+kind: Service
+metadata:
+  name: pacman
+  labels:
+    name: pacman
+spec:
+  type: ClusterIP
+  ports:
+    - port: 80
+      targetPort: 8080
+      protocol: TCP
+  selector:
+    name: pacman
+
+---
+
+apiVersion: route.openshift.io/v1
+kind: Route
+metadata:
+  name: pacman
+  labels:
+    app.kubernetes.io/name: pacman
+spec:
+  path: "/"
+  to:
+    kind: Service
+    name: pacman
+  tls:
+    termination: edge
+    insecureEdgeTerminationPolicy: Redirect
+  wildcardPolicy: None
+----
 
 Click the Import YAML (A) (the icon that looks like a + sign) button on the OpenShift GUI masthead.
 

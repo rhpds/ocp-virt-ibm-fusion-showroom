@@ -29,7 +29,7 @@ VM can be moved to another physical location for lower latency or when required 
 * If a VM uses a host model CPU, the nodes must support the CPU.
 * Configuring a dedicated Multus network for live migration is highly recommended. A dedicated network minimizes the effects of network saturation on tenant workloads during migration
 
-== Learning objectives --
+== Learning objectives
 
 By the end of this module, you will be able to:
 
@@ -73,7 +73,7 @@ Once it is complete, check the "node" the VM is running on. It should be the nod
 
 
 [[exercise-2]]
-== Exercise 2: VM Live Migration Exercise 2
+== Exercise 2: VM Live Storage Migration Exercise 2
 
 In this exercise, you will perform a storage migration from the existing storage class to a new storage class. 
 
