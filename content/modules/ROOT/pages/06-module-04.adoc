@@ -300,8 +300,158 @@ With application consistency, it’s possible to restore an application to anoth
 Application consistent backups are important because they ensure that important files and data are saved in a way that keeps them safe and undamaged. This means that if something goes wrong, like a computer crash or a power outage, clients can restore their files and data to the way they were before the event, without losing any important information.
 ****
 
+Click the Import YAML (A) (the icon that looks like a + sign) button on the OpenShift GUI masthead.
+
+image::06-module-04-bnr-import-yaml.png[Import YAML,link=self,window=blank,width=700,title="Import YAML"]
+
+Navigate back to the OpenShift GUI and use Ctrl-V (windows), CMD-V (Mac) or the browser Edit -> Paste function to paste the contents of the clipboard into the editor (A) text entry field. Click the Create (B) button to create the recipe.
+
+image::06-module-04-bnr-create-recipe.png[Create Recipe,link=self,window=blank,width=700,title="Create recipe"]
+
+In the Fusion GUI, navigate to the Applications screen by clicking on the Applications (A) menu item shown in the left-hand side navigation pane. When the Applications screen is shown, select the pacman checkbox (B) and click on the Assign backup policy (C) button.
+
+image::06-module-04-bnr-assign-policy3.png[Assign Policy,link=self,window=blank,width=700,title="Assign policy"]
+
+Select the weekly-backup policy (A) and use the Backup up now (B) toggle to disable the initial backup (shown as gray when disabled). Click the Save (C) button.
+
+NOTE: IMPORTANT. Set the Backup up now option to disabled (indicated by the absence of a green checkmark) to prevent an initial backup. The Pacman application does not generate sufficient changes in the MongoDB database and performing an initial backup without the appropriate recipe may result in restore failures when using Change Block Tracking (CBT).
+
+image::06-module-04-bnr-set-policy.png[Set Policy,link=self,window=blank,width=700,title="Set policy"]
+
+The Pacman application is now associated with the weekly-backup policy.
+
+image::06-module-04-bnr-policy-associated.png[Policy Associated,link=self,window=blank,width=700,title="Policy Associated"]
+
+In the OpenShift GUI, navigate to the Search screen by clicking on the Home (A) menu item shown in the left-hand side navigation pane and selecting the Search (B) sub-item.
+
+image::06-module-04-bnr-policy-search.png[Search,link=self,window=blank,width=700,title="Search"]
+
+Change to the ibm-spectrum-fusion-ns project, if not already there. Refer to section OpenShift project selector on how to use the project selector. Open the drop-down list associated with the “Resources” (A) field and (B) enter policyassignment in the search box text entry field (displayed with a magnifying glass). Select the PolicyAssignment (C). Click anywhere outside the drop-down list to dismiss the window.
+
+image::06-module-04-bnr-project-selector.png[Project Selector,link=self,window=blank,width=700,title="Project Selector"]
+
+Click on the PolicyAssignment associated with the pacman application that was just created. The syntax for the policy is, <application>-<backup policy>-<backup cluster name>. In the example shown here, the PolicyAssignment name is pacman-weekly-backup-apps.66d86bd0694f19a4a8b069f1.ocp.techzone.ibm.com.
+
+image::06-module-04-bnr-policy-assignment.png[Policy Assignment,link=self,window=blank,width=700,title="Policy Assignment"]
+
+Click the YAML (A) tab.
+
+image::06-module-04-bnr-policy-assignment-yaml.png[Policy Assignment YAML,link=self,window=blank,width=700,title="Policy Assignment YAML"]
+
+The recipe created in Step 13 will now be added to the Pacman weekly-backup PolicyAssignment.
+
+[source,bash]
+----
+The recipe syntax is as follows for use in a PolicyAssignment.
+spec:
+  recipe:
+    apiVersion: spp-data-protection.isf.ibm.com/v1alpha1
+    name: RECIPE_NAME
+    namespace: RECIPE_NAMESPACE
+RECIPE_NAME is the name of the recipe as specified in the Recipe CR.
+RECIPE_NAMESPACE is the namespace where the Recipe CR is located.
+----
+
+Enter the following 4 lines before status and after runNow as shown in the screenshot. The spacing included in the text entered is needed to conform to the YAML used by OpenShift. Do not enter the values (X spaces) and instead press the spacebar the number of times indicated if the editor does not auto-indent.
+
+NOTE: for readability the metadata and status information have been collapsed using the expand/collapse buttons on the left-hand side of the editor.
+
+[source,bash]
+----
+(2 spaces) recipe:
+(4 spaces) apiVersion: spp-data-protection.isf.ibm.com/v1alpha1
+(4 spaces) name: mongodb-image-based-backup-restore-recipe
+(4 spaces) namespace: ibm-spectrum-fusion-ns
+----
+Click the Save (A) button after the 4 new lines have been added.
+
+image::06-module-04-bnr-policy-save-yaml.png[Policy Save YAML,link=self,window=blank,width=700,title="Policy Save YAML"]
+
+Change to the pacman project using the Project selector if necessary. Refer to section OpenShift project selector on how to use the project selector. Navigate to the Pods screen by clicking on the Workload (A) menu item shown in the left-hand side navigation pane and selecting the Pods (B) sub-item. Click on the mongodb-XXXXXXXXXX-YYYYY pod (C) to open the pod details page.
+
+image::06-module-04-bnr-pacman-project-yaml.png[Pacman Project,link=self,window=blank,width=700,title="Pacman project"]
+
+Click the Logs (A) tab and select Wrap lines (B) to improve readability. Scroll to the bottom of the logs if necessary. Leave this window open for now as we will return to it after a new backup has been run using the updated PolicyAssignment with the newly attached recipe.
+
+image::06-module-04-bnr-pacman-logs-yaml.png[Pacman Logs,link=self,window=blank,width=700,title="Pacman logs"]
+
+In the Fusion GUI, navigate to the Applications page by clicking on the Applications (A) menu item shown in the left-hand side navigation pane. When the Application screen is shown, select the pacman application (B) checkbox and click on the Back up now (C) button. 
+
+image::06-module-04-bnr-backup-now-yaml.png[Backup Now,link=self,window=blank,width=700,title="backup now"]
+
+Click on the Back up (A) button.
+
+image::06-module-04-bnr-backup-now-button.png[Backup Now Button,link=self,window=blank,width=700,title="backup now button"]
+
+Navigate to the Jobs screen by clicking on the Backup & restore (A) menu item shown in the left-hand side navigation pane and selecting the Jobs (B) sub-item. When the Jobs screen is shown, click on the pacman-weekly-backup-<cluster name> job (C) to open the job details page.
+
+image::06-module-04-bnr-backup-jobs.png[Backup Jobs,link=self,window=blank,width=700,title="backup jobs"]
+
+Verify that the Backup sequence includes hooks provided in the backup recipe by expanding the Backup sequence section of the Jobs details.
+
+image::06-module-04-bnr-backup-seq.png[Backup Sequence,link=self,window=blank,width=700,title="backup sequence"]
+
+Additional details can be displayed by selecting the Log view on the Backup Jobs page.
+
+image::06-module-04-bnr-log-view.png[Backup Log View,link=self,window=blank,width=700,title="backup log view"]
+
+In the OpenShift GUI, navigate back to the mongodb Pod logs and look for the fsyncLock command to be executed. You may need to scroll back to find the COMMAND being run.
+
+image::06-module-04-bnr-mongo-logs1.png[Mongo Logs,link=self,window=blank,width=700,title="Mongo logs view"]
+
+Continue investigating the mongodb logs and find the fsyncUnlock log entry.
+
+image::06-module-04-bnr-mongo-logs2.png[Mongo Logs,link=self,window=blank,width=700,title="Mongo logs view"]
+
+
 [[exercise-4]]
-== Exercise 4: Backup and Restore an Virtual Machine 
+== Exercise 4: Backup Service Protection
+
+The IBM Storage Fusion Backup & Restore service protection involves the backup of the control plane to a S3 object bucket. In the event of cluster failure, you can use this feature to restore the Backup & Restore service to another cluster. In this section you will configure service protection and run the initial service backup.
+
+****
+Service protection is just for backup/restore on the hub cluster and not for other configurations that exist in IBM Storage Fusion. For example, Red Hat OpenShift Container Platform cluster, disaster recovery, Red Hat OpenShift Data Foundation.
+****
+
+NOTE: To follow this section, create a new object bucket claim, as was done in the backup location section and use the new bucket claim info service protection.
+
+In the Fusion GUI, navigate to the Service protection page by clicking on the Backup & restore (A) menu item shown in the left-hand side navigation pane and selecting Service protection (B) sub-item.
+
+image::06-module-04-bnr-service-protection.png[Service Protection,link=self,window=blank,width=700,title="Service Protection"]
+
+Click on the Configure service backups (A) tile.
+
+image::06-module-04-bnr-service-protection-backups.png[Service Protection Backups,link=self,window=blank,width=700,title="Service Protection Backups"]
+
+Click on the S3 Compliant tile in the Choose an object storage type wizard step and click the Next button.
+
+image::06-module-04-bnr-add-location.png[Add Backup Location,link=self,window=blank,width=700,title="Add Location"]
+
+Enter the S3 endpoint and connection information, from the noobaa bucket claim you created.  
+
+image::06-module-04-bnr-add-location2.png[Add Backup Location,link=self,window=blank,width=700,title="Add Location"]
+
+An Adding backup location, Location service-protection-location is being added message will appear in the upper-right corner of the Fusion GUI.
+
+image::06-module-04-bnr-service-protection-location.png[Service Protection Location,link=self,window=blank,width=700,title="Service Protection Location"]
+
+Click the Define schedule (A) button to configure a schedule for service protection.
+
+image::06-module-04-bnr-service-schedule.png[Service Protection Schedule,link=self,window=blank,width=700,title="Service Protection Schedule"]
+
+Select Weekly (A) under the Select frequency item, select Sunday (B) from the Schedule item, and select a Start time, End time, and Timezone (C) under the Time window item. Click the Create policy (D) button. Leave Initiate Service backup now selected.
+
+image::06-module-04-bnr-service-set-schedule.png[Service Protection Set Schedule,link=self,window=blank,width=700,title="Service Protection Set Schedule"]
+
+The backup service protection backup policy information should now be displayed.
+
+image::06-module-04-bnr-service-backup-policy.png[Service Protection backup Policy,link=self,window=blank,width=700,title="Service Protection Backup Policy"]
+
+Confirm that backup service protection has been enabled for the IBM Fusion Backup & restore service.
+
+image::06-module-04-bnr-service-enable.png[Service Protection Enable,link=self,window=blank,width=700,title="Service Protection Enable"]
+image::06-module-04-bnr-service-backup-policy.png[Service Protection backup Policy,link=self,window=blank,width=700,title="Service Protection Backup Policy"]
+
 
 
 == Module summary
@@ -310,20 +460,13 @@ You have successfully explored the IBM Fusion Backup and Restore Service.
 
 **What you accomplished:**
 
-* Navigated the OpenShift Virtualization dashboard and identified key components
-* Examined IBM Fusion storage classes and verified storage integration
-* Created a RHEL 9 virtual machine from a template
-* Verified VM and storage status using both the console and CLI
+* Defined backup and restore locations and policies.
+* Assigned backup polices to applications.
+* Restored an application to a new project.
+* Defined a backup service protection policy.
 
 **Key takeaways:**
 
-* OpenShift Virtualization runs VMs as native Kubernetes resources alongside containers
-* IBM Fusion provides enterprise storage features including snapshots and ReadWriteMany access
-* VM creation follows familiar patterns, whether using templates or custom specifications
-* Both the web console and CLI are available for VM management and troubleshooting
-
-**Next steps:**
-
-Module 4 will cover IBM Fusion Backup and Restore service
-
-== Assets needed
+* Fusion Backup and Restore is a key component of IBM Fusion and enhances Red Hat OpenShift.
+* IBM Fusion Backup and Restore has an easy to administor user interface. 
+* Backup policies allow the customization of scheduled backup and create application consistent backups.
