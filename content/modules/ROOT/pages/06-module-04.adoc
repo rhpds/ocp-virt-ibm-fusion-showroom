@@ -63,7 +63,7 @@ Once the bucket claim is created, scroll down and reveal values
 
 image::06-module-04-objectbucketclaimvalues.png[Data Foundation Object Bucket Claim values,link=self,window=blank,width=700,title="Object Bucket Claim Values"]
 
-We will use the “Bucket Name”, “Access Key” and “Secret Key”.
+We will use the `Bucket Name`, `Access Key` and `Secret Key`.
 
 Next we need to get the external endpoint
 Navigate to “networking” -> “routes” and choose all projects and search for “S3”

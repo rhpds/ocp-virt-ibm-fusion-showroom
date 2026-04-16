@@ -59,17 +59,17 @@ Also, take note of the "node" the Virtual Machine is running on.
 
 image::06-module-03-vm-node.png[Virtual Machine Node,link=self,window=blank,width=700,title="Virtual Machine Node"]
 
-Now select "actions", "migration", "Compute":
+Now select `actions`, `migration`, `Compute`:
 
 image::06-module-03-vm-migration.png[Virtual Machine Migration,link=self,window=blank,width=700,title="Virtual Machine Migration"]
 
-At this point you will see a dialog box: "Migrate VirtualMachine to a different Node". Select "Specific Node" and then choose a new node for the target migration. The click "Migrate Virtual Machine"
+At this point you will see a dialog box: `Migrate VirtualMachine to a different Node`. Select `Specific Node` and then choose a new node for the target migration. Then click `Migrate Virtual Machine`
 
 image::06-module-03-vm-migration-node.png[Virtual Machine Migration Node,link=self,window=blank,width=700,title="Virtual Machine Migration Node"]
 
-The status of the VM will change from "running" to "migrating" but can be quick so it might flash very briefly from "running" to "migrating" and back to "running"
+The status of the VM will change from `running` to `migrating` but can be quick so it might flash very briefly from `running` to `migrating` and back to `running`
 
-Once it is complete, check the "node" the VM is running on. It should be the node you selected. 
+Once it is complete, check the `node` the VM is running on. It should be the node you selected. 
 
 
 [[exercise-2]]
@@ -79,19 +79,19 @@ In this exercise, you will perform a storage migration from the existing storage
 
 As with "exercise-1", select a virtual machine you created and check its storage class. In this exercise, we will migrate to a new storage class. 
 
-Navigate to "Storage", "StorageClasses":
+Navigate to `Storage`, `StorageClasses`:
 
 image:06-module-03-vm-storage-classes.png[Virtual Machine Storage Classes,link=self,window=blank,width=700,title="Virtual Machine Storage Classes"]
 
-"ocs-storagecluster-cephfs" and "ocs-storagecluster-ceph-rbd-virtualization" are both good classes for virtual machines. 
+`ocs-storagecluster-cephfs` and `ocs-storagecluster-ceph-rbd-virtualization` are both good classes for virtual machines. 
 
 Navigate back to your list of virtual machines and select a running VM.
 
-You can check the storage class in use by selecting "Configuration", "Storage"
+You can check the storage class in use by selecting `Configuration`, `Storage`
 
 image:06-module-03-vm-storage-class.png[Virtual Machine Storage Class,link=self,window=blank,width=700,title="Virtual Machine Storage Class"]
 
-Now navigate back to the "Overview" and select "migration", "storage"
+Now navigate back to the `Overview` and select `migration`, `storage`
 
 image:06-module-03-vm-storage-migration.png[Virtual Machine Storage Migration,link=self,window=blank,width=700,title="Virtual Machine Storage Migration"]
 
@@ -99,11 +99,11 @@ This will start the dialog box:
 
 image:06-module-03-vm-storage-migration-dialog.png[Virtual Machine Storage Migration Dialog,link=self,window=blank,width=700,title="Virtual Machine Storage Migration Dialog"]
 
-Select "The entire VirtualMachine" and "next"
+Select `The entire VirtualMachine` and `next`
 
 image:06-module-03-vm-storage-migration-newclass.png[Virtual Machine Storage Migration New Class,link=self,window=blank,width=700,title="Virtual Machine Storage Migration New Class"]
 
-"Next" and then "Migrate VirtualMachine":
+`Next` and then `Migrate VirtualMachine`:
 
 image:06-module-03-vm-storage-migrate.png[Virtual Machine Storage Migrate,link=self,window=blank,width=700,title="Virtual Machine Storage Migrate"]
 
@@ -117,7 +117,7 @@ image:06-module-03-vm-storage-migration-done.png[Virtual Machine Storage Migrati
 
 === Verify
 
-Navigate back to "configuration", "storage" and varify the storage change:
+Navigate back to `configuration`, `storage` and varify the storage change:
 
 image:06-module-03-vm-storage-migration-varify.png[Virtual Machine Storage Migration Varify,link=self,window=blank,width=700,title="Virtual Machine Storage Migration Varify"]
 
