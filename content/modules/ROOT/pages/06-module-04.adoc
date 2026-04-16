@@ -780,11 +780,11 @@ spec:
     apiVersion: spp-data-protection.isf.ibm.com/v1alpha1
     name: RECIPE_NAME
     namespace: RECIPE_NAMESPACE
-RECIPE_NAME is the name of the recipe as specified in the Recipe CR.
-RECIPE_NAMESPACE is the namespace where the Recipe CR is located.
 ----
+`RECIPE_NAME` is the name of the recipe as specified in the Recipe CR.
+`RECIPE_NAMESPACE` is the namespace where the Recipe CR is located.
 
-Enter the following 4 lines before status and after runNow as shown in the screenshot. The spacing included in the text entered is needed to conform to the YAML used by OpenShift. Do not enter the values (X spaces) and instead press the spacebar the number of times indicated if the editor does not auto-indent.
+Enter the following 4 lines before status and after runNow as shown in the screenshot. The spacing included in the text entered is needed to conform to the YAML used by OpenShift.
 
 NOTE: for readability the metadata and status information have been collapsed using the expand/collapse buttons on the left-hand side of the editor.
 
