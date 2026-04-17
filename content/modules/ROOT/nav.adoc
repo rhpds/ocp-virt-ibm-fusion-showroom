@@ -16,10 +16,12 @@
 ** xref:04-module-02.adoc#exercise-3[Exercise 3: Snapshot, Corrupt Data, and Restore]
 
 * xref:05-module-03.adoc[Module 3: Workload migration]
+** xref:05-module-03.adoc#exercise-1[Exercise 1: VM Live Migration]
+** xref:05-module-03.adoc#exercise-2[Exercise 2: VM Live Storage Migration]
 
 * xref:06-module-04.adoc[Module 4: IBM Fusion Backup & Restore]
-** xref:06-module-04.adoc#exercise-1[Exercise 1: Configure IBM Fusion Backup and Restore]
-** xref:06-module-04.adoc#exercise-1[Exercise 2: Exploring IBM Fusion Backup and Restore elements]
-** xref:06-module-04.adoc#exercise-1[Exercise 3: Backup and Restore a virtual machine]
-** xref:06-module-04.adoc#exercise-1[Exercise 4: Backup and Restore a containerized application]
-
+** xref:06-module-04.adoc#exercise-1[Exercise 1: Create Backup Locations and Policies]
+** xref:06-module-04.adoc#exercise-2[Exercise 2: Backup and Restore an Application]
+** xref:06-module-04.adoc#exercise-3[Exercise 3: Backup and Restore Virtual Machines]
+** xref:06-module-04.adoc#exercise-4[Exercise 4: Backup and Restore an Application with a recipe]
+** xref:06-module-04.adoc#exercise-5[Exercise 5: Backup Service Protection]

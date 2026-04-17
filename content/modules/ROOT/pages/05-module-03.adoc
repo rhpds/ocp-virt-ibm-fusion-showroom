@@ -10,6 +10,18 @@ Live migration is the process of moving a running virtual machine (VM) to anothe
 
 By default, live migration traffic is encrypted using Transport Layer Security (TLS).
 
+Reastons for VM Migration:
+
+Load Balancing: 
+VMs can be moved to host machines with lower usage if their host becomes overloaded or if another host is under-utilized. Through load-balancing, you can improve VMs capacity and network performance.
+
+Energy savings:
+VMs can be redistributed to other hosts, and the unloaded host systems can be powered off to save energy and cut costs.
+
+Geographic migration:
+VM can be moved to another physical location for lower latency or when required for fault tolerance or disaster recovery.
+
+
 === Live migration requirements. 
 
 * The cluster must have shared storage with ReadWriteMany (RWX) access mode.
@@ -21,58 +33,113 @@ By default, live migration traffic is encrypted using Transport Layer Security (
 
 By the end of this module, you will be able to:
 
-* Migrate VM 
-* Objective 2
-* Objective n
+* Migrate virtual machine between worker nodes
+* Migrate a virtual machine to a new storage class
 
 [[exercise-1]]
 == Exercise 1: VM Live Migration Exercise 1
 
-In this exercise, you will ...
+In this exercise, you will create a new virtual machine and migrate it between worker nodes in an OpenShift cluster. 
 
 === Verify
 
-Confirm that ...
+Confirm that you have a virtual machine running with a storage class that is RWX. If not, you will need to create a new virtual machine and customize the VM's boot volume to a storage class that is RWX enabled. ceph RBD is capable of RWX. 
+
+==== Create or Select a Virtual Machine
+
+Create a new Virtual Machine (VM) or select a VM from a previous you created in a previous section of this lab. 
+
+Once you have a VM, make sure the VM is in the running state.
+
+image::06-module-03-vm-list.png[List Virtual Machines,link=self,window=blank,width=700,title="List Virtual Machines"]
+
+image::06-module-03-vm-running.png[Running Virtual Machines,link=self,window=blank,width=700,title="Running Virtual Machines"]
+
+Also, take note of the "node" the Virtual Machine is running on.
+
+image::06-module-03-vm-node.png[Virtual Machine Node,link=self,window=blank,width=700,title="Virtual Machine Node"]
+
+Now select `actions`, `migration`, `Compute`:
+
+image::06-module-03-vm-migration.png[Virtual Machine Migration,link=self,window=blank,width=700,title="Virtual Machine Migration"]
+
+At this point you will see a dialog box: `Migrate VirtualMachine to a different Node`. Select `Specific Node` and then choose a new node for the target migration. Then click `Migrate Virtual Machine`
+
+image::06-module-03-vm-migration-node.png[Virtual Machine Migration Node,link=self,window=blank,width=700,title="Virtual Machine Migration Node"]
+
+The status of the VM will change from `running` to `migrating` but can be quick so it might flash very briefly from `running` to `migrating` and back to `running`
+
+Once it is complete, check the `node` the VM is running on. It should be the node you selected. 
+
 
 [[exercise-2]]
-== Exercise 2: VM Live Migration Exercise 2
+== Exercise 2: VM Live Storage Migration Exercise 2
 
-In this exercise, you will ...
+In this exercise, you will perform a storage migration from the existing storage class to a new storage class. 
+
+As with "exercise-1", select a virtual machine you created and check its storage class. In this exercise, we will migrate to a new storage class. 
+
+Navigate to `Storage`, `StorageClasses`:
+
+image:06-module-03-vm-storage-classes.png[Virtual Machine Storage Classes,link=self,window=blank,width=700,title="Virtual Machine Storage Classes"]
+
+`ocs-storagecluster-cephfs` and `ocs-storagecluster-ceph-rbd-virtualization` are both good classes for virtual machines. 
+
+Navigate back to your list of virtual machines and select a running VM.
+
+You can check the storage class in use by selecting `Configuration`, `Storage`
+
+image:06-module-03-vm-storage-class.png[Virtual Machine Storage Class,link=self,window=blank,width=700,title="Virtual Machine Storage Class"]
+
+Now navigate back to the `Overview` and select `migration`, `storage`
+
+image:06-module-03-vm-storage-migration.png[Virtual Machine Storage Migration,link=self,window=blank,width=700,title="Virtual Machine Storage Migration"]
+
+This will start the dialog box:
+
+image:06-module-03-vm-storage-migration-dialog.png[Virtual Machine Storage Migration Dialog,link=self,window=blank,width=700,title="Virtual Machine Storage Migration Dialog"]
+
+Select `The entire VirtualMachine` and `next`
+
+image:06-module-03-vm-storage-migration-newclass.png[Virtual Machine Storage Migration New Class,link=self,window=blank,width=700,title="Virtual Machine Storage Migration New Class"]
+
+`Next` and then `Migrate VirtualMachine`:
+
+image:06-module-03-vm-storage-migrate.png[Virtual Machine Storage Migrate,link=self,window=blank,width=700,title="Virtual Machine Storage Migrate"]
+
+Now the migration will show running
+
+image:06-module-03-vm-storage-migration-running.png[Virtual Machine Storage Migration Running,link=self,window=blank,width=700,title="Virtual Machine Storage Migration Running"]
+
+when completed
+
+image:06-module-03-vm-storage-migration-done.png[Virtual Machine Storage Migration Done,link=self,window=blank,width=700,title="Virtual Machine Storage Migration Done"]
 
 === Verify
 
-Confirm that ...
+Navigate back to `configuration`, `storage` and varify the storage change:
+
+image:06-module-03-vm-storage-migration-varify.png[Virtual Machine Storage Migration Varify,link=self,window=blank,width=700,title="Virtual Machine Storage Migration Varify"]
 
 == Learning outcomes
 
 By completing this module, you should now understand:
 
-* How to navigate the OpenShift Virtualization interface and identify operator status
-* How IBM Fusion storage classes integrate with OpenShift to provide persistent storage for VMs
-* How to create a virtual machine from a template using the OpenShift console
-* How to verify VM status using both the console and the command line
+* How to navigate the OpenShift Virtualization interface and Start Virtual Machine Migrations
+* How to start a virtual machine compute migration
+* How to start a virtual machine storage migration
 
 == Module summary
 
-You have successfully explored the OpenShift Virtualization environment and created your first VM.
+You have successfully explored the OpenShift Virtualization environment for migrations.
 
 **What you accomplished:**
 
-* Navigated the OpenShift Virtualization dashboard and identified key components
-* Examined IBM Fusion storage classes and verified storage integration
-* Created a RHEL 9 virtual machine from a template
-* Verified VM and storage status using both the console and CLI
-
-**Key takeaways:**
-
-* OpenShift Virtualization runs VMs as native Kubernetes resources alongside containers
-* IBM Fusion provides enterprise storage features including snapshots and ReadWriteMany access
-* VM creation follows familiar patterns, whether using templates or custom specifications
-* Both the web console and CLI are available for VM management and troubleshooting
+* Navigated the OpenShift Virtualization dashboard for migrations
+* Examined IBM Fusion storage classes and running nodes.
+* Migrated a virtual machine to a new worker node.
+* Changed a virtual machines storage class. 
 
 **Next steps:**
 
 Module 4 will cover IBM Fusion Backup and Restore service
-
-== Assets needed
-
