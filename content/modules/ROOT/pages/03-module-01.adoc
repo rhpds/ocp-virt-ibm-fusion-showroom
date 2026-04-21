@@ -89,6 +89,10 @@ kubevirt-hyperconverged   <age>
 * HyperConverged CR status shows as available
 * OpenShift Virtualization CSV phase is "Succeeded"
 
+++++
+<div class="validate-button-placeholder" data-module="module-01"></div>
+++++
+
 [[exercise-2]]
 == Exercise 2: Exploring IBM Fusion storage integration
 
@@ -246,6 +250,10 @@ Expected output from the two commands above show.
 * Two `volumesnapshotclass` are available in your cluster for `openshift-storage` drivers
 * The IBM Fusion Data Foundation cluster shows `PHASE` as `Ready`
 
+++++
+<div class="validate-button-placeholder" data-module="module-01"></div>
+++++
+
 [[exercise-3]]
 == Exercise 3: Explore IBM Fusion Backup and Restore Service
 
@@ -292,6 +300,13 @@ Confirm that the IBM Fusion Backup & Restore service installation has started:
 * The installation progress is visible in the IBM Fusion UI
 
 This completes this part of the lab. The IBM Fusion Backup & Restore functionality will be configured and used in the optional **Module 4**.
+
+++++
+<div class="solve-button-placeholder" data-module="module-01"></div>
+++++
+++++
+<div class="validate-button-placeholder" data-module="module-01"></div>
+++++
 
 [[exercise-4]]
 == Exercise 4: Creating your first virtual machine
@@ -366,6 +381,13 @@ rhel9-test-vm-volume   Bound    pvc-<UUID>                                 30Gi 
 * VM status shows `Running`
 * A persistent volume claim exists for the VM boot disk
 * The PVC uses an IBM Fusion storage class
+
+++++
+<div class="solve-button-placeholder" data-module="module-01"></div>
+++++
+++++
+<div class="validate-button-placeholder" data-module="module-01"></div>
+++++
 
 == Learning outcomes
 

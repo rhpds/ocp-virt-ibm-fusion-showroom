@@ -1,0 +1,255 @@
+---
+- name: Module 2 - VM Lifecycle Management Validation
+  hosts: localhost
+  connection: local
+  gather_facts: false
+  vars:
+    vm_name: rhel9-webserver
+    vm_namespace: vmlab-student
+    virt_sc: ocs-storagecluster-ceph-rbd-virtualization
+    dv_name: rhel9-webserver-rootdisk
+    snapshot_name: rhel9-webserver-pre-change
+    restore_name: rhel9-webserver-restore-pre
+    virtctl_bin: /opt/app-root/bin/virtctl
+    ssh_key_path: /tmp/.ssh/id_rsa
+
+  tasks:
+
+    # -------------------------------------------------------
+    # Check 1 — Namespace vmlab-student exists
+    # -------------------------------------------------------
+    - name: Check namespace vmlab-student exists
+      kubernetes.core.k8s_info:
+        kubeconfig: "{{ k8s_kubeconfig }}"
+        validate_certs: false
+        api_version: v1
+        kind: Namespace
+        name: "{{ vm_namespace }}"
+      register: r_namespace
+      ignore_errors: true
+
+    # -------------------------------------------------------
+    # Check 2 — VirtualMachine rhel9-webserver exists
+    # -------------------------------------------------------
+    - name: Check VirtualMachine rhel9-webserver exists
+      kubernetes.core.k8s_info:
+        kubeconfig: "{{ k8s_kubeconfig }}"
+        validate_certs: false
+        api_version: kubevirt.io/v1
+        kind: VirtualMachine
+        name: "{{ vm_name }}"
+        namespace: "{{ vm_namespace }}"
+      register: r_vm
+      ignore_errors: true
+
+    - name: Resolve actual DataVolume name from VM spec (post-restore name may differ)
+      ansible.builtin.set_fact:
+        actual_dv_name: >-
+          {{ (r_vm.resources | first).spec.dataVolumeTemplates[0].metadata.name
+             if (r_vm.resources | default([]) | length > 0
+                 and (r_vm.resources | first).spec.dataVolumeTemplates | default([]) | length > 0)
+             else dv_name }}
+      ignore_errors: true
+
+    # -------------------------------------------------------
+    # Check 3 — virtctl binary installed and executable
+    # -------------------------------------------------------
+    - name: Check virtctl binary installed at /opt/app-root/bin/virtctl
+      ansible.builtin.stat:
+        path: "{{ virtctl_bin }}"
+      register: r_virtctl
+      ignore_errors: true
+
+    # -------------------------------------------------------
+    # Check 4 — VMI rhel9-webserver Running
+    # -------------------------------------------------------
+    - name: Check VMI rhel9-webserver is Running
+      kubernetes.core.k8s_info:
+        kubeconfig: "{{ k8s_kubeconfig }}"
+        validate_certs: false
+        api_version: kubevirt.io/v1
+        kind: VirtualMachineInstance
+        name: "{{ vm_name }}"
+        namespace: "{{ vm_namespace }}"
+      register: r_vmi
+      ignore_errors: true
+
+    # -------------------------------------------------------
+    # Check 5 — virt-launcher pod Running
+    # -------------------------------------------------------
+    - name: Check virt-launcher pod Running with label vm.kubevirt.io/name=rhel9-webserver
+      kubernetes.core.k8s_info:
+        kubeconfig: "{{ k8s_kubeconfig }}"
+        validate_certs: false
+        api_version: v1
+        kind: Pod
+        namespace: "{{ vm_namespace }}"
+        label_selectors:
+          - "vm.kubevirt.io/name={{ vm_name }}"
+      register: r_launcher
+      ignore_errors: true
+
+    # -------------------------------------------------------
+    # Check 6 — DataVolume rhel9-webserver-rootdisk Succeeded
+    # -------------------------------------------------------
+    - name: Check DataVolume for rhel9-webserver phase=Succeeded
+      kubernetes.core.k8s_info:
+        kubeconfig: "{{ k8s_kubeconfig }}"
+        validate_certs: false
+        api_version: cdi.kubevirt.io/v1beta1
+        kind: DataVolume
+        name: "{{ actual_dv_name | default(dv_name) }}"
+        namespace: "{{ vm_namespace }}"
+      register: r_dv
+      ignore_errors: true
+
+    # -------------------------------------------------------
+    # Check 7 — PVC rhel9-webserver-rootdisk: 30Gi, RWX, ceph-rbd-virtualization
+    # -------------------------------------------------------
+    - name: Check PVC for rhel9-webserver properties
+      kubernetes.core.k8s_info:
+        kubeconfig: "{{ k8s_kubeconfig }}"
+        validate_certs: false
+        api_version: v1
+        kind: PersistentVolumeClaim
+        name: "{{ actual_dv_name | default(dv_name) }}"
+        namespace: "{{ vm_namespace }}"
+      register: r_pvc
+      ignore_errors: true
+
+    # -------------------------------------------------------
+    # Check 8 — VirtualMachineSnapshot readyToUse=true
+    # -------------------------------------------------------
+    - name: Check VirtualMachineSnapshot rhel9-webserver-pre-change readyToUse
+      kubernetes.core.k8s_info:
+        kubeconfig: "{{ k8s_kubeconfig }}"
+        validate_certs: false
+        api_version: snapshot.kubevirt.io/v1beta1
+        kind: VirtualMachineSnapshot
+        name: "{{ snapshot_name }}"
+        namespace: "{{ vm_namespace }}"
+      register: r_snapshot
+      ignore_errors: true
+
+    # -------------------------------------------------------
+    # Check 9 — VirtualMachineRestore complete=true
+    # -------------------------------------------------------
+    - name: Check VirtualMachineRestore rhel9-webserver-restore-pre complete
+      kubernetes.core.k8s_info:
+        kubeconfig: "{{ k8s_kubeconfig }}"
+        validate_certs: false
+        api_version: snapshot.kubevirt.io/v1beta1
+        kind: VirtualMachineRestore
+        name: "{{ restore_name }}"
+        namespace: "{{ vm_namespace }}"
+      register: r_restore
+      ignore_errors: true
+
+    # -------------------------------------------------------
+    # Check 10 — httpd active inside VM (via virtctl ssh)
+    # -------------------------------------------------------
+    - name: Check httpd active inside VM
+      environment:
+        KUBECONFIG: "{{ k8s_kubeconfig }}"
+      ansible.builtin.command: >-
+        {{ virtctl_bin }} ssh -i {{ ssh_key_path }}
+        cloud-user@vm/{{ vm_name }} -n {{ vm_namespace }}
+        --local-ssh-opts="-o StrictHostKeyChecking=no"
+        --local-ssh-opts="-o ConnectTimeout=15"
+        -c "sudo systemctl is-active httpd"
+      register: r_httpd
+      ignore_errors: true
+      changed_when: false
+      when: r_vmi.resources | default([]) | length > 0
+        and (r_vmi.resources | first).status.phase | default('') == 'Running'
+
+    # -------------------------------------------------------
+    # Check 11 — curl localhost returns restored content
+    # -------------------------------------------------------
+    - name: Check curl localhost returns expected content (post-restore)
+      environment:
+        KUBECONFIG: "{{ k8s_kubeconfig }}"
+      ansible.builtin.command: >-
+        {{ virtctl_bin }} ssh -i {{ ssh_key_path }}
+        cloud-user@vm/{{ vm_name }} -n {{ vm_namespace }}
+        --local-ssh-opts="-o StrictHostKeyChecking=no"
+        --local-ssh-opts="-o ConnectTimeout=15"
+        -c "curl -s --max-time 10 http://localhost"
+      register: r_curl
+      ignore_errors: true
+      changed_when: false
+      when: r_vmi.resources | default([]) | length > 0
+        and (r_vmi.resources | first).status.phase | default('') == 'Running'
+
+    # -------------------------------------------------------
+    # Build result facts
+    # -------------------------------------------------------
+    - name: Build task result facts
+      ansible.builtin.set_fact:
+        _t1_ns_ok: >-
+          {{ r_namespace.resources | default([]) | length > 0 }}
+        _t2_vm_ok: >-
+          {{ r_vm.resources | default([]) | length > 0 }}
+        _t3_virtctl_ok: >-
+          {{ r_virtctl.stat.exists | default(false) and r_virtctl.stat.executable | default(false) }}
+        _t4_vmi_ok: >-
+          {{ r_vmi.resources | default([]) | length > 0
+             and (r_vmi.resources | first).status.phase | default('') == 'Running' }}
+        _t5_launcher_ok: >-
+          {{ r_launcher.resources | default([])
+             | selectattr('status.phase', 'equalto', 'Running') | list | length > 0 }}
+        _t6_dv_ok: >-
+          {{ r_dv.resources | default([]) | length > 0
+             and (r_dv.resources | first).status.phase | default('') == 'Succeeded' }}
+        _t7_pvc_ok: >-
+          {{ r_pvc.resources | default([]) | length > 0
+             and (r_pvc.resources | first).status.phase | default('') == 'Bound'
+             and (r_pvc.resources | first).spec.storageClassName | default('') == virt_sc
+             and 'ReadWriteMany' in (r_pvc.resources | first).spec.accessModes | default([]) }}
+        _t8_snapshot_ok: >-
+          {{ r_snapshot.resources | default([]) | length > 0
+             and (r_snapshot.resources | first).status.readyToUse | default(false) | bool }}
+        _t9_restore_ok: >-
+          {{ r_restore.resources | default([]) | length > 0
+             and (r_restore.resources | first).status.complete | default(false) | bool }}
+        _t10_httpd_ok: >-
+          {{ r_httpd is defined and r_httpd is not skipped
+             and r_httpd.rc | default(1) == 0
+             and 'active' in (r_httpd.stdout | default('')) }}
+        _t11_curl_ok: >-
+          {{ r_curl is defined and r_curl is not skipped
+             and 'This is the WEB server before failure.' in (r_curl.stdout | default('')) }}
+
+    # -------------------------------------------------------
+    # Final validation gate
+    # -------------------------------------------------------
+    - name: Validate all module 2 tasks
+      validation_check:
+        check: >-
+          {{ _t1_ns_ok and _t2_vm_ok and _t3_virtctl_ok and _t4_vmi_ok
+             and _t5_launcher_ok and _t6_dv_ok and _t7_pvc_ok
+             and _t8_snapshot_ok and _t9_restore_ok and _t10_httpd_ok and _t11_curl_ok }}
+        pass_msg: |
+          Task 1: Namespace vmlab-student exists
+          Task 2: VirtualMachine rhel9-webserver exists
+          Task 3: virtctl binary installed at /opt/app-root/bin/virtctl
+          Task 4: VMI rhel9-webserver is Running
+          Task 5: virt-launcher pod is Running
+          Task 6: DataVolume rhel9-webserver-rootdisk phase=Succeeded
+          Task 7: PVC rhel9-webserver-rootdisk is 30Gi/RWX/ocs-storagecluster-ceph-rbd-virtualization
+          Task 8: VirtualMachineSnapshot rhel9-webserver-pre-change readyToUse=true
+          Task 9: VirtualMachineRestore rhel9-webserver-restore-pre complete=true
+          Task 10: httpd is active inside the VM
+          Task 11: curl localhost returns 'This is the WEB server before failure.'
+        error_msg: |
+          {{ '[OK]' if _t1_ns_ok else '[FAIL]' }} Task 1: Namespace vmlab-student {{ 'exists' if _t1_ns_ok else 'NOT FOUND -- create it with: oc new-project vmlab-student' }}
+          {{ '[OK]' if _t2_vm_ok else '[FAIL]' }} Task 2: VirtualMachine rhel9-webserver {{ 'exists' if _t2_vm_ok else 'NOT FOUND -- run Solve or follow Exercise 1 to create the VM' }}
+          {{ '[OK]' if _t3_virtctl_ok else '[FAIL]' }} Task 3: virtctl binary {{ 'installed at /opt/app-root/bin/virtctl' if _t3_virtctl_ok else 'NOT FOUND or not executable at /opt/app-root/bin/virtctl -- run Solve or install virtctl manually' }}
+          {{ '[OK]' if _t4_vmi_ok else '[FAIL]' }} Task 4: VMI rhel9-webserver {{ 'is Running' if _t4_vmi_ok else 'NOT Running -- start the VM with: virtctl start rhel9-webserver -n vmlab-student' }}
+          {{ '[OK]' if _t5_launcher_ok else '[FAIL]' }} Task 5: virt-launcher pod {{ 'is Running' if _t5_launcher_ok else 'NOT Running -- ensure the VM is started and healthy' }}
+          {{ '[OK]' if _t6_dv_ok else '[FAIL]' }} Task 6: DataVolume rhel9-webserver-rootdisk {{ 'phase=Succeeded' if _t6_dv_ok else 'NOT Succeeded -- check DataVolume status: oc get dv -n vmlab-student' }}
+          {{ '[OK]' if _t7_pvc_ok else '[FAIL]' }} Task 7: PVC rhel9-webserver-rootdisk {{ 'correct (30Gi/RWX/ceph-rbd-virt)' if _t7_pvc_ok else 'incorrect or not Bound -- check: oc get pvc -n vmlab-student' }}
+          {{ '[OK]' if _t8_snapshot_ok else '[FAIL]' }} Task 8: VirtualMachineSnapshot rhel9-webserver-pre-change {{ 'readyToUse=true' if _t8_snapshot_ok else 'NOT ready or missing -- complete Exercise 3 snapshot step' }}
+          {{ '[OK]' if _t9_restore_ok else '[FAIL]' }} Task 9: VirtualMachineRestore rhel9-webserver-restore-pre {{ 'complete=true' if _t9_restore_ok else 'NOT complete or missing -- complete Exercise 3 restore step' }}
+          {{ '[OK]' if _t10_httpd_ok else '[FAIL]' }} Task 10: httpd {{ 'is active inside VM' if _t10_httpd_ok else 'NOT active inside VM -- the restore may not have completed or the VM is not reachable via virtctl ssh' }}
+          {{ '[OK]' if _t11_curl_ok else '[FAIL]' }} Task 11: curl localhost {{ "returns expected content" if _t11_curl_ok else "does NOT return 'This is the WEB server before failure.' -- ensure restore completed and VM was restarted" }}

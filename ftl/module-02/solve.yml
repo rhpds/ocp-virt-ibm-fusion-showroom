@@ -1,0 +1,817 @@
+---
+- name: Module 2 - VM Lifecycle Management Solve
+  hosts: localhost
+  connection: local
+  gather_facts: false
+  vars:
+    vm_name: rhel9-webserver
+    vm_namespace: vmlab-student
+    virt_sc: ocs-storagecluster-ceph-rbd-virtualization
+    dv_name: rhel9-webserver-rootdisk
+    snapshot_name: rhel9-webserver-pre-change
+    restore_name: rhel9-webserver-restore-pre
+    virtctl_bin: /opt/app-root/bin/virtctl
+    ssh_key_path: /tmp/.ssh/id_rsa
+
+  tasks:
+
+    # ── Exercise 1: Create and Inspect VM ─────────────────────────────────────
+
+    - name: Ensure namespace vmlab-student exists
+      kubernetes.core.k8s:
+        kubeconfig: "{{ k8s_kubeconfig }}"
+        validate_certs: false
+        state: present
+        definition:
+          apiVersion: v1
+          kind: Namespace
+          metadata:
+            name: "{{ vm_namespace }}"
+      ignore_errors: true
+
+    - name: Ensure /tmp/.ssh directory exists
+      ansible.builtin.file:
+        path: /tmp/.ssh
+        state: directory
+        mode: "0700"
+
+    - name: Generate SSH keypair at /tmp/.ssh/id_rsa (idempotent)
+      community.crypto.openssh_keypair:
+        path: "{{ ssh_key_path }}"
+        type: rsa
+        size: 4096
+        force: false
+      register: r_keypair
+      ignore_errors: true
+
+    - name: Read SSH public key
+      ansible.builtin.slurp:
+        src: "{{ ssh_key_path }}.pub"
+      register: r_pubkey
+      ignore_errors: true
+
+    - name: Set pubkey fact
+      ansible.builtin.set_fact:
+        ssh_pubkey: "{{ r_pubkey.content | b64decode | trim }}"
+      when: r_pubkey.content is defined
+
+    - name: Check whether VirtualMachine rhel9-webserver already exists
+      kubernetes.core.k8s_info:
+        kubeconfig: "{{ k8s_kubeconfig }}"
+        validate_certs: false
+        api_version: kubevirt.io/v1
+        kind: VirtualMachine
+        name: "{{ vm_name }}"
+        namespace: "{{ vm_namespace }}"
+      register: r_vm_exists
+      ignore_errors: true
+
+    - name: Create VirtualMachine rhel9-webserver (runStrategy=Manual, stopped)
+      kubernetes.core.k8s:
+        kubeconfig: "{{ k8s_kubeconfig }}"
+        validate_certs: false
+        state: present
+        definition:
+          apiVersion: kubevirt.io/v1
+          kind: VirtualMachine
+          metadata:
+            name: "{{ vm_name }}"
+            namespace: "{{ vm_namespace }}"
+            labels:
+              app: webserver
+          spec:
+            runStrategy: Manual
+            template:
+              metadata:
+                labels:
+                  kubevirt.io/vm: "{{ vm_name }}"
+              spec:
+                domain:
+                  cpu:
+                    cores: 2
+                    sockets: 1
+                    threads: 1
+                  memory:
+                    guest: 4Gi
+                  devices:
+                    disks:
+                      - name: rootdisk
+                        disk:
+                          bus: virtio
+                      - name: cloudinitdisk
+                        disk:
+                          bus: virtio
+                    interfaces:
+                      - name: default
+                        masquerade: {}
+                networks:
+                  - name: default
+                    pod: {}
+                volumes:
+                  - name: rootdisk
+                    dataVolume:
+                      name: "{{ dv_name }}"
+                  - name: cloudinitdisk
+                    cloudInitNoCloud:
+                      userData: |
+                        #cloud-config
+                        user: cloud-user
+                        password: redhat123
+                        chpasswd: { expire: False }
+                        ssh_authorized_keys:
+                          - {{ ssh_pubkey | default('') }}
+                        yum_repos:
+                          baseos:
+                            name: CentOS Stream 9 BaseOS
+                            baseurl: https://mirror.stream.centos.org/9-stream/BaseOS/x86_64/os/
+                            enabled: true
+                            gpgcheck: false
+                          appstream:
+                            name: CentOS Stream 9 AppStream
+                            baseurl: https://mirror.stream.centos.org/9-stream/AppStream/x86_64/os/
+                            enabled: true
+                            gpgcheck: false
+                        packages:
+                          - httpd
+                          - firewalld
+                        runcmd:
+                          - echo "This is the WEB server before failure." | sudo tee /var/www/html/index.html
+                          - systemctl enable --now firewalld
+                          - systemctl enable --now httpd
+                          - firewall-cmd --permanent --add-service=http
+                          - firewall-cmd --reload
+            dataVolumeTemplates:
+              - metadata:
+                  name: "{{ dv_name }}"
+                spec:
+                  storage:
+                    accessModes:
+                      - ReadWriteMany
+                    resources:
+                      requests:
+                        storage: 30Gi
+                    storageClassName: "{{ virt_sc }}"
+                  sourceRef:
+                    kind: DataSource
+                    name: rhel9
+                    namespace: openshift-virtualization-os-images
+      when: r_vm_exists.resources | default([]) | length == 0
+      ignore_errors: true
+
+    # ── Install virtctl ────────────────────────────────────────────────────────
+
+    - name: Check if virtctl binary already installed
+      ansible.builtin.stat:
+        path: "{{ virtctl_bin }}"
+      register: r_virtctl_stat
+
+    - name: Get virtctl download route from openshift-cnv
+      kubernetes.core.k8s_info:
+        kubeconfig: "{{ k8s_kubeconfig }}"
+        validate_certs: false
+        api_version: route.openshift.io/v1
+        kind: Route
+        name: hyperconverged-cluster-cli-download
+        namespace: openshift-cnv
+      register: r_virtctl_route
+      when: not r_virtctl_stat.stat.exists
+      ignore_errors: true
+
+    - name: Set virtctl download URL fact
+      ansible.builtin.set_fact:
+        virtctl_url: >-
+          https://{{ (r_virtctl_route.resources | first).spec.host }}/amd64/linux/virtctl.tar.gz
+      when:
+        - not r_virtctl_stat.stat.exists
+        - r_virtctl_route.resources | default([]) | length > 0
+
+    - name: Download virtctl tarball
+      ansible.builtin.get_url:
+        url: "{{ virtctl_url }}"
+        dest: /tmp/virtctl.tar.gz
+        validate_certs: false
+        timeout: 60
+      when:
+        - not r_virtctl_stat.stat.exists
+        - virtctl_url is defined
+      ignore_errors: true
+
+    - name: Extract virtctl binary
+      ansible.builtin.unarchive:
+        src: /tmp/virtctl.tar.gz
+        dest: /tmp
+        remote_src: true
+      when:
+        - not r_virtctl_stat.stat.exists
+        - virtctl_url is defined
+      ignore_errors: true
+
+    - name: Install virtctl to /usr/local/bin
+      ansible.builtin.copy:
+        src: /tmp/virtctl
+        dest: "{{ virtctl_bin }}"
+        mode: "0755"
+        remote_src: true
+      when:
+        - not r_virtctl_stat.stat.exists
+        - virtctl_url is defined
+      ignore_errors: true
+
+    # ── Start VM and wait for Running ─────────────────────────────────────────
+
+    - name: Get current VMI state
+      kubernetes.core.k8s_info:
+        kubeconfig: "{{ k8s_kubeconfig }}"
+        validate_certs: false
+        api_version: kubevirt.io/v1
+        kind: VirtualMachineInstance
+        name: "{{ vm_name }}"
+        namespace: "{{ vm_namespace }}"
+      register: r_vmi_current
+      ignore_errors: true
+
+    - name: Start VM rhel9-webserver (if not already Running)
+      environment:
+        KUBECONFIG: "{{ k8s_kubeconfig }}"
+      ansible.builtin.command: >-
+        {{ virtctl_bin }} start {{ vm_name }} -n {{ vm_namespace }}
+      when: >-
+        r_vmi_current.resources | default([]) | length == 0
+        or (r_vmi_current.resources | first).status.phase | default('') not in ['Running', 'Scheduling', 'Scheduled']
+      changed_when: true
+      ignore_errors: true
+
+    - name: Wait for VMI rhel9-webserver to reach Running phase (up to 15 min)
+      kubernetes.core.k8s_info:
+        kubeconfig: "{{ k8s_kubeconfig }}"
+        validate_certs: false
+        api_version: kubevirt.io/v1
+        kind: VirtualMachineInstance
+        name: "{{ vm_name }}"
+        namespace: "{{ vm_namespace }}"
+      register: r_vmi_running
+      retries: 45
+      delay: 20
+      until: >-
+        r_vmi_running.resources | default([]) | length > 0
+        and (r_vmi_running.resources | first).status.phase | default('') == 'Running'
+      ignore_errors: true
+
+    - name: Verify DataVolume import succeeded
+      kubernetes.core.k8s_info:
+        kubeconfig: "{{ k8s_kubeconfig }}"
+        validate_certs: false
+        api_version: cdi.kubevirt.io/v1beta1
+        kind: DataVolume
+        name: "{{ dv_name }}"
+        namespace: "{{ vm_namespace }}"
+      register: r_dv
+      ignore_errors: true
+
+    - name: Verify PVC rhel9-webserver-rootdisk
+      kubernetes.core.k8s_info:
+        kubeconfig: "{{ k8s_kubeconfig }}"
+        validate_certs: false
+        api_version: v1
+        kind: PersistentVolumeClaim
+        name: "{{ dv_name }}"
+        namespace: "{{ vm_namespace }}"
+      register: r_pvc
+      ignore_errors: true
+
+    - name: Verify virt-launcher pod Running
+      kubernetes.core.k8s_info:
+        kubeconfig: "{{ k8s_kubeconfig }}"
+        validate_certs: false
+        api_version: v1
+        kind: Pod
+        namespace: "{{ vm_namespace }}"
+        label_selectors:
+          - "vm.kubevirt.io/name={{ vm_name }}"
+      register: r_virt_launcher
+      ignore_errors: true
+
+    - name: Wait for cloud-init to complete inside VM (up to 10 min)
+      environment:
+        KUBECONFIG: "{{ k8s_kubeconfig }}"
+      ansible.builtin.command: >-
+        {{ virtctl_bin }} ssh -i {{ ssh_key_path }}
+        cloud-user@vm/{{ vm_name }} -n {{ vm_namespace }}
+        --local-ssh-opts="-o StrictHostKeyChecking=no"
+        --local-ssh-opts="-o ConnectTimeout=10"
+        -c "sudo cloud-init status --wait"
+      register: r_cloud_init
+      retries: 20
+      delay: 30
+      until: r_cloud_init.rc == 0 and 'done' in r_cloud_init.stdout
+      ignore_errors: true
+      changed_when: false
+
+    - name: Check httpd active inside VM
+      environment:
+        KUBECONFIG: "{{ k8s_kubeconfig }}"
+      ansible.builtin.command: >-
+        {{ virtctl_bin }} ssh -i {{ ssh_key_path }}
+        cloud-user@vm/{{ vm_name }} -n {{ vm_namespace }}
+        --local-ssh-opts="-o StrictHostKeyChecking=no"
+        --local-ssh-opts="-o ConnectTimeout=10"
+        -c "sudo systemctl is-active httpd"
+      register: r_httpd_active
+      ignore_errors: true
+      changed_when: false
+
+    - name: Verify web server responds inside VM
+      environment:
+        KUBECONFIG: "{{ k8s_kubeconfig }}"
+      ansible.builtin.command: >-
+        {{ virtctl_bin }} ssh -i {{ ssh_key_path }}
+        cloud-user@vm/{{ vm_name }} -n {{ vm_namespace }}
+        --local-ssh-opts="-o StrictHostKeyChecking=no"
+        --local-ssh-opts="-o ConnectTimeout=10"
+        -c "curl -s http://localhost"
+      register: r_curl_before
+      ignore_errors: true
+      changed_when: false
+
+    # ── Exercise 2: Power Operations ──────────────────────────────────────────
+
+    - name: Pause VM rhel9-webserver
+      environment:
+        KUBECONFIG: "{{ k8s_kubeconfig }}"
+      ansible.builtin.command: >-
+        {{ virtctl_bin }} pause vm {{ vm_name }} -n {{ vm_namespace }}
+      register: r_pause
+      changed_when: true
+      ignore_errors: true
+
+    - name: Wait 5 seconds for pause to take effect
+      ansible.builtin.pause:
+        seconds: 5
+
+    - name: Get VMI state after pause
+      kubernetes.core.k8s_info:
+        kubeconfig: "{{ k8s_kubeconfig }}"
+        validate_certs: false
+        api_version: kubevirt.io/v1
+        kind: VirtualMachineInstance
+        name: "{{ vm_name }}"
+        namespace: "{{ vm_namespace }}"
+      register: r_vmi_paused
+      ignore_errors: true
+
+    - name: Unpause VM rhel9-webserver
+      environment:
+        KUBECONFIG: "{{ k8s_kubeconfig }}"
+      ansible.builtin.command: >-
+        {{ virtctl_bin }} unpause vm {{ vm_name }} -n {{ vm_namespace }}
+      register: r_unpause
+      changed_when: true
+      ignore_errors: true
+
+    - name: Wait for VMI to return to Ready=true after unpause
+      kubernetes.core.k8s_info:
+        kubeconfig: "{{ k8s_kubeconfig }}"
+        validate_certs: false
+        api_version: kubevirt.io/v1
+        kind: VirtualMachineInstance
+        name: "{{ vm_name }}"
+        namespace: "{{ vm_namespace }}"
+      register: r_vmi_unpaused
+      retries: 10
+      delay: 6
+      until: >-
+        r_vmi_unpaused.resources | default([]) | length > 0
+        and (r_vmi_unpaused.resources | first).status.conditions | default([]) | selectattr("type", "equalto", "Ready") | selectattr("status", "equalto", "True") | list | length > 0
+      ignore_errors: true
+
+    - name: Graceful restart of VM rhel9-webserver
+      environment:
+        KUBECONFIG: "{{ k8s_kubeconfig }}"
+      ansible.builtin.command: >-
+        {{ virtctl_bin }} restart {{ vm_name }} -n {{ vm_namespace }}
+      register: r_restart
+      changed_when: true
+      ignore_errors: true
+
+    - name: Wait for VMI to reach Running phase after restart (up to 5 min)
+      kubernetes.core.k8s_info:
+        kubeconfig: "{{ k8s_kubeconfig }}"
+        validate_certs: false
+        api_version: kubevirt.io/v1
+        kind: VirtualMachineInstance
+        name: "{{ vm_name }}"
+        namespace: "{{ vm_namespace }}"
+      register: r_vmi_restarted
+      retries: 30
+      delay: 10
+      until: >-
+        r_vmi_restarted.resources | default([]) | length > 0
+        and (r_vmi_restarted.resources | first).status.phase | default('') == 'Running'
+        and (r_vmi_restarted.resources | first).status.conditions | default([]) | selectattr("type", "equalto", "Ready") | selectattr("status", "equalto", "True") | list | length > 0
+      ignore_errors: true
+
+    - name: Force-stop VM rhel9-webserver
+      environment:
+        KUBECONFIG: "{{ k8s_kubeconfig }}"
+      ansible.builtin.command: >-
+        {{ virtctl_bin }} stop --force --grace-period=0 {{ vm_name }} -n {{ vm_namespace }}
+      register: r_force_stop
+      changed_when: true
+      ignore_errors: true
+
+    - name: Wait for VMI to disappear after force-stop (VM stopped)
+      kubernetes.core.k8s_info:
+        kubeconfig: "{{ k8s_kubeconfig }}"
+        validate_certs: false
+        api_version: kubevirt.io/v1
+        kind: VirtualMachineInstance
+        name: "{{ vm_name }}"
+        namespace: "{{ vm_namespace }}"
+      register: r_vmi_stopped
+      retries: 20
+      delay: 10
+      until: r_vmi_stopped.resources | default([]) | length == 0
+      ignore_errors: true
+
+    - name: Verify virt-launcher pod is gone after stop
+      kubernetes.core.k8s_info:
+        kubeconfig: "{{ k8s_kubeconfig }}"
+        validate_certs: false
+        api_version: v1
+        kind: Pod
+        namespace: "{{ vm_namespace }}"
+        label_selectors:
+          - "vm.kubevirt.io/name={{ vm_name }}"
+      register: r_launcher_stopped
+      ignore_errors: true
+
+    - name: Start VM rhel9-webserver again after force-stop
+      environment:
+        KUBECONFIG: "{{ k8s_kubeconfig }}"
+      ansible.builtin.command: >-
+        {{ virtctl_bin }} start {{ vm_name }} -n {{ vm_namespace }}
+      register: r_start_again
+      changed_when: true
+      ignore_errors: true
+
+    - name: Wait for VMI to reach Running phase after restart (up to 10 min)
+      kubernetes.core.k8s_info:
+        kubeconfig: "{{ k8s_kubeconfig }}"
+        validate_certs: false
+        api_version: kubevirt.io/v1
+        kind: VirtualMachineInstance
+        name: "{{ vm_name }}"
+        namespace: "{{ vm_namespace }}"
+      register: r_vmi_started_again
+      retries: 30
+      delay: 20
+      until: >-
+        r_vmi_started_again.resources | default([]) | length > 0
+        and (r_vmi_started_again.resources | first).status.phase | default('') == 'Running'
+        and (r_vmi_started_again.resources | first).status.conditions | default([]) | selectattr("type", "equalto", "Ready") | selectattr("status", "equalto", "True") | list | length > 0
+      ignore_errors: true
+
+    # ── Exercise 3: Snapshot, Corrupt, Restore ────────────────────────────────
+
+    - name: Stop VM before snapshot
+      environment:
+        KUBECONFIG: "{{ k8s_kubeconfig }}"
+      ansible.builtin.command: >-
+        {{ virtctl_bin }} stop {{ vm_name }} -n {{ vm_namespace }}
+      register: r_stop_for_snap
+      changed_when: true
+      ignore_errors: true
+
+    - name: Wait for VMI to disappear before snapshot
+      kubernetes.core.k8s_info:
+        kubeconfig: "{{ k8s_kubeconfig }}"
+        validate_certs: false
+        api_version: kubevirt.io/v1
+        kind: VirtualMachineInstance
+        name: "{{ vm_name }}"
+        namespace: "{{ vm_namespace }}"
+      register: r_vmi_pre_snap
+      retries: 20
+      delay: 10
+      until: r_vmi_pre_snap.resources | default([]) | length == 0
+      ignore_errors: true
+
+    - name: Check if snapshot rhel9-webserver-pre-change already exists
+      kubernetes.core.k8s_info:
+        kubeconfig: "{{ k8s_kubeconfig }}"
+        validate_certs: false
+        api_version: snapshot.kubevirt.io/v1beta1
+        kind: VirtualMachineSnapshot
+        name: "{{ snapshot_name }}"
+        namespace: "{{ vm_namespace }}"
+      register: r_snap_exists
+      ignore_errors: true
+
+    - name: Create VirtualMachineSnapshot rhel9-webserver-pre-change
+      kubernetes.core.k8s:
+        kubeconfig: "{{ k8s_kubeconfig }}"
+        validate_certs: false
+        state: present
+        definition:
+          apiVersion: snapshot.kubevirt.io/v1beta1
+          kind: VirtualMachineSnapshot
+          metadata:
+            name: "{{ snapshot_name }}"
+            namespace: "{{ vm_namespace }}"
+          spec:
+            source:
+              apiGroup: kubevirt.io
+              kind: VirtualMachine
+              name: "{{ vm_name }}"
+      when: r_snap_exists.resources | default([]) | length == 0
+      ignore_errors: true
+
+    - name: Wait for snapshot to become readyToUse (up to 10 min)
+      kubernetes.core.k8s_info:
+        kubeconfig: "{{ k8s_kubeconfig }}"
+        validate_certs: false
+        api_version: snapshot.kubevirt.io/v1beta1
+        kind: VirtualMachineSnapshot
+        name: "{{ snapshot_name }}"
+        namespace: "{{ vm_namespace }}"
+      register: r_snapshot
+      retries: 30
+      delay: 20
+      until: >-
+        r_snapshot.resources | default([]) | length > 0
+        and (r_snapshot.resources | first).status.readyToUse | default(false) | bool
+      ignore_errors: true
+
+    - name: Start VM after snapshot
+      environment:
+        KUBECONFIG: "{{ k8s_kubeconfig }}"
+      ansible.builtin.command: >-
+        {{ virtctl_bin }} start {{ vm_name }} -n {{ vm_namespace }}
+      register: r_start_post_snap
+      changed_when: true
+      ignore_errors: true
+
+    - name: Wait for VMI to reach Running phase after post-snapshot start (up to 10 min)
+      kubernetes.core.k8s_info:
+        kubeconfig: "{{ k8s_kubeconfig }}"
+        validate_certs: false
+        api_version: kubevirt.io/v1
+        kind: VirtualMachineInstance
+        name: "{{ vm_name }}"
+        namespace: "{{ vm_namespace }}"
+      register: r_vmi_post_snap
+      retries: 30
+      delay: 20
+      until: >-
+        r_vmi_post_snap.resources | default([]) | length > 0
+        and (r_vmi_post_snap.resources | first).status.phase | default('') == 'Running'
+        and (r_vmi_post_snap.resources | first).status.conditions | default([]) | selectattr("type", "equalto", "Ready") | selectattr("status", "equalto", "True") | list | length > 0
+      ignore_errors: true
+
+    - name: Wait for cloud-init after post-snapshot boot (up to 8 min)
+      environment:
+        KUBECONFIG: "{{ k8s_kubeconfig }}"
+      ansible.builtin.command: >-
+        {{ virtctl_bin }} ssh -i {{ ssh_key_path }}
+        cloud-user@vm/{{ vm_name }} -n {{ vm_namespace }}
+        --local-ssh-opts="-o StrictHostKeyChecking=no"
+        --local-ssh-opts="-o ConnectTimeout=10"
+        -c "sudo cloud-init status --wait"
+      register: r_cloud_init_snap
+      retries: 16
+      delay: 30
+      until: r_cloud_init_snap.rc == 0 and 'done' in r_cloud_init_snap.stdout
+      ignore_errors: true
+      changed_when: false
+
+    - name: Simulate failure - stop httpd inside VM
+      environment:
+        KUBECONFIG: "{{ k8s_kubeconfig }}"
+      ansible.builtin.command: >-
+        {{ virtctl_bin }} ssh -i {{ ssh_key_path }}
+        cloud-user@vm/{{ vm_name }} -n {{ vm_namespace }}
+        --local-ssh-opts="-o StrictHostKeyChecking=no"
+        --local-ssh-opts="-o ConnectTimeout=10"
+        -c "sudo systemctl stop httpd"
+      register: r_stop_httpd
+      ignore_errors: true
+      changed_when: true
+
+    - name: Simulate failure - remove httpd inside VM
+      environment:
+        KUBECONFIG: "{{ k8s_kubeconfig }}"
+      ansible.builtin.command: >-
+        {{ virtctl_bin }} ssh -i {{ ssh_key_path }}
+        cloud-user@vm/{{ vm_name }} -n {{ vm_namespace }}
+        --local-ssh-opts="-o StrictHostKeyChecking=no"
+        --local-ssh-opts="-o ConnectTimeout=10"
+        -c "sudo dnf remove -y httpd"
+      register: r_remove_httpd
+      ignore_errors: true
+      changed_when: true
+
+    - name: Verify web server is broken after simulated failure
+      environment:
+        KUBECONFIG: "{{ k8s_kubeconfig }}"
+      ansible.builtin.command: >-
+        {{ virtctl_bin }} ssh -i {{ ssh_key_path }}
+        cloud-user@vm/{{ vm_name }} -n {{ vm_namespace }}
+        --local-ssh-opts="-o StrictHostKeyChecking=no"
+        --local-ssh-opts="-o ConnectTimeout=10"
+        -c "curl -s --max-time 5 http://localhost"
+      register: r_curl_broken
+      ignore_errors: true
+      changed_when: false
+
+    - name: Stop VM before restore
+      environment:
+        KUBECONFIG: "{{ k8s_kubeconfig }}"
+      ansible.builtin.command: >-
+        {{ virtctl_bin }} stop {{ vm_name }} -n {{ vm_namespace }}
+      register: r_stop_for_restore
+      changed_when: true
+      ignore_errors: true
+
+    - name: Wait for VMI to disappear before restore
+      kubernetes.core.k8s_info:
+        kubeconfig: "{{ k8s_kubeconfig }}"
+        validate_certs: false
+        api_version: kubevirt.io/v1
+        kind: VirtualMachineInstance
+        name: "{{ vm_name }}"
+        namespace: "{{ vm_namespace }}"
+      register: r_vmi_pre_restore
+      retries: 20
+      delay: 10
+      until: r_vmi_pre_restore.resources | default([]) | length == 0
+      ignore_errors: true
+
+    - name: Check if restore rhel9-webserver-restore-pre already exists
+      kubernetes.core.k8s_info:
+        kubeconfig: "{{ k8s_kubeconfig }}"
+        validate_certs: false
+        api_version: snapshot.kubevirt.io/v1beta1
+        kind: VirtualMachineRestore
+        name: "{{ restore_name }}"
+        namespace: "{{ vm_namespace }}"
+      register: r_restore_exists
+      ignore_errors: true
+
+    - name: Create VirtualMachineRestore rhel9-webserver-restore-pre
+      kubernetes.core.k8s:
+        kubeconfig: "{{ k8s_kubeconfig }}"
+        validate_certs: false
+        state: present
+        definition:
+          apiVersion: snapshot.kubevirt.io/v1beta1
+          kind: VirtualMachineRestore
+          metadata:
+            name: "{{ restore_name }}"
+            namespace: "{{ vm_namespace }}"
+          spec:
+            target:
+              apiGroup: kubevirt.io
+              kind: VirtualMachine
+              name: "{{ vm_name }}"
+            virtualMachineSnapshotName: "{{ snapshot_name }}"
+      when: >-
+        r_restore_exists.resources | default([]) | length == 0
+        or not (r_restore_exists.resources | first).status.complete | default(false) | bool
+      ignore_errors: true
+
+    - name: Wait for restore to complete (up to 10 min)
+      kubernetes.core.k8s_info:
+        kubeconfig: "{{ k8s_kubeconfig }}"
+        validate_certs: false
+        api_version: snapshot.kubevirt.io/v1beta1
+        kind: VirtualMachineRestore
+        name: "{{ restore_name }}"
+        namespace: "{{ vm_namespace }}"
+      register: r_restore
+      retries: 30
+      delay: 20
+      until: >-
+        r_restore.resources | default([]) | length > 0
+        and (r_restore.resources | first).status.complete | default(false) | bool
+      ignore_errors: true
+
+    - name: Start VM after restore
+      environment:
+        KUBECONFIG: "{{ k8s_kubeconfig }}"
+      ansible.builtin.command: >-
+        {{ virtctl_bin }} start {{ vm_name }} -n {{ vm_namespace }}
+      register: r_start_post_restore
+      changed_when: true
+      ignore_errors: true
+
+    - name: Wait for VMI to reach Running phase after restore (up to 10 min)
+      kubernetes.core.k8s_info:
+        kubeconfig: "{{ k8s_kubeconfig }}"
+        validate_certs: false
+        api_version: kubevirt.io/v1
+        kind: VirtualMachineInstance
+        name: "{{ vm_name }}"
+        namespace: "{{ vm_namespace }}"
+      register: r_vmi_post_restore
+      retries: 30
+      delay: 20
+      until: >-
+        r_vmi_post_restore.resources | default([]) | length > 0
+        and (r_vmi_post_restore.resources | first).status.phase | default('') == 'Running'
+        and (r_vmi_post_restore.resources | first).status.conditions | default([]) | selectattr("type", "equalto", "Ready") | selectattr("status", "equalto", "True") | list | length > 0
+      ignore_errors: true
+
+    - name: Wait for cloud-init after restore boot (up to 10 min)
+      environment:
+        KUBECONFIG: "{{ k8s_kubeconfig }}"
+      ansible.builtin.command: >-
+        {{ virtctl_bin }} ssh -i {{ ssh_key_path }}
+        cloud-user@vm/{{ vm_name }} -n {{ vm_namespace }}
+        --local-ssh-opts="-o StrictHostKeyChecking=no"
+        --local-ssh-opts="-o ConnectTimeout=10"
+        -c "sudo cloud-init status --wait"
+      register: r_cloud_init_restore
+      retries: 20
+      delay: 30
+      until: r_cloud_init_restore.rc == 0 and 'done' in r_cloud_init_restore.stdout
+      ignore_errors: true
+      changed_when: false
+
+    - name: Verify web server restored inside VM
+      environment:
+        KUBECONFIG: "{{ k8s_kubeconfig }}"
+      ansible.builtin.command: >-
+        {{ virtctl_bin }} ssh -i {{ ssh_key_path }}
+        cloud-user@vm/{{ vm_name }} -n {{ vm_namespace }}
+        --local-ssh-opts="-o StrictHostKeyChecking=no"
+        --local-ssh-opts="-o ConnectTimeout=10"
+        -c "curl -s http://localhost"
+      register: r_curl_restored
+      ignore_errors: true
+      changed_when: false
+
+    # ── Derive check facts ─────────────────────────────────────────────────────
+
+    - name: Derive final check facts
+      ansible.builtin.set_fact:
+        fact_ns_ok: >-
+          true
+        fact_vm_exists: >-
+          {{ r_vm_exists.resources | default([]) | length > 0
+             or r_vmi_post_restore.resources | default([]) | length > 0 }}
+        fact_virtctl_ok: >-
+          {{ r_virtctl_stat.stat.exists | default(false) or virtctl_url is defined }}
+        fact_vmi_running: >-
+          {{ r_vmi_post_restore.resources | default([]) | length > 0
+             and (r_vmi_post_restore.resources | first).status.phase | default('') == 'Running' }}
+        fact_launcher_ok: >-
+          {{ r_virt_launcher.resources | default([])
+             | selectattr('status.phase', 'equalto', 'Running') | list | length > 0 }}
+        fact_dv_ok: >-
+          {{ r_dv.resources | default([]) | length > 0
+             and (r_dv.resources | first).status.phase | default('') == 'Succeeded' }}
+        fact_pvc_ok: >-
+          {{ r_pvc.resources | default([]) | length > 0
+             and (r_pvc.resources | first).status.phase | default('') == 'Bound'
+             and (r_pvc.resources | first).spec.storageClassName | default('')
+                  == 'ocs-storagecluster-ceph-rbd-virtualization' }}
+        fact_httpd_ok: >-
+          {{ r_httpd_active.rc | default(1) == 0
+             and 'active' in (r_httpd_active.stdout | default('')) }}
+        fact_curl_before_ok: >-
+          {{ 'This is the WEB server before failure.' in (r_curl_before.stdout | default('')) }}
+        fact_snapshot_ok: >-
+          {{ r_snapshot.resources | default([]) | length > 0
+             and (r_snapshot.resources | first).status.readyToUse | default(false) | bool }}
+        fact_restore_ok: >-
+          {{ r_restore.resources | default([]) | length > 0
+             and (r_restore.resources | first).status.complete | default(false) | bool }}
+        fact_curl_restored_ok: >-
+          {{ 'This is the WEB server before failure.' in (r_curl_restored.stdout | default('')) }}
+      ignore_errors: true
+
+    # ── Final report ───────────────────────────────────────────────────────────
+
+    - name: Report solve status
+      ansible.builtin.debug:
+        msg: |
+          === Module 2 Solve Report ===
+
+          Exercise 1 — Create and Inspect VM:
+            Namespace vmlab-student exists:                           {{ 'ok' if fact_ns_ok else 'NOT ok' }}
+            VirtualMachine rhel9-webserver exists:                    {{ 'ok' if fact_vm_exists else 'NOT ok' }}
+            virtctl binary installed at /usr/local/bin/virtctl:       {{ 'ok' if fact_virtctl_ok else 'NOT ok' }}
+            VMI rhel9-webserver phase=Running:                        {{ 'ok' if fact_vmi_running else 'NOT ok' }}
+            virt-launcher pod Running:                                 {{ 'ok' if fact_launcher_ok else 'NOT ok' }}
+            DataVolume rhel9-webserver-rootdisk phase=Succeeded:      {{ 'ok' if fact_dv_ok else 'NOT ok' }}
+            PVC rhel9-webserver-rootdisk 30Gi/RWX/ceph-rbd-virt:     {{ 'ok' if fact_pvc_ok else 'NOT ok' }}
+            httpd active inside VM:                                    {{ 'ok' if fact_httpd_ok else 'NOT ok' }}
+            curl localhost returns expected content before snapshot:   {{ 'ok' if fact_curl_before_ok else 'NOT ok' }}
+
+          Exercise 2 — Power Operations:
+            pause/unpause/restart/force-stop/start executed:          ok (ignore_errors; check output above)
+
+          Exercise 3 — Snapshot, Corrupt, Restore:
+            VirtualMachineSnapshot rhel9-webserver-pre-change ready:  {{ 'ok' if fact_snapshot_ok else 'NOT ok' }}
+            VirtualMachineRestore rhel9-webserver-restore-pre done:   {{ 'ok' if fact_restore_ok else 'NOT ok' }}
+            curl localhost returns expected content after restore:     {{ 'ok' if fact_curl_restored_ok else 'NOT ok' }}

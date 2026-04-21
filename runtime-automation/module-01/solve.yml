@@ -1,0 +1,302 @@
+---
+- name: Module 1 - Exploring the Environment Solve
+  hosts: localhost
+  connection: local
+  gather_facts: false
+  vars:
+    vm_name: rhel9-test-vm
+    vm_namespace: default
+    cnv_namespace: openshift-cnv
+    storage_namespace: openshift-storage
+    virt_sc: ocs-storagecluster-ceph-rbd-virtualization
+    rbd_sc: ocs-storagecluster-ceph-rbd
+
+  tasks:
+
+    # ── Exercise 1 checks (read-only — resources already exist) ────────────────
+
+    - name: Get OpenShift Virtualization CSV in openshift-cnv
+      kubernetes.core.k8s_info:
+        kubeconfig: "{{ k8s_kubeconfig | default(omit) }}"
+        validate_certs: false
+        api_version: operators.coreos.com/v1alpha1
+        kind: ClusterServiceVersion
+        namespace: "{{ cnv_namespace }}"
+      register: r_csv
+      ignore_errors: true
+
+    - name: Filter kubevirt-hyperconverged CSV
+      ansible.builtin.set_fact:
+        r_cnv_csv: >-
+          {{ r_csv.resources | default([])
+             | selectattr('metadata.name', 'match', 'kubevirt-hyperconverged-operator.*')
+             | list }}
+      ignore_errors: true
+
+    - name: Get HyperConverged CR in openshift-cnv
+      kubernetes.core.k8s_info:
+        kubeconfig: "{{ k8s_kubeconfig | default(omit) }}"
+        validate_certs: false
+        api_version: hco.kubevirt.io/v1beta1
+        kind: HyperConverged
+        namespace: "{{ cnv_namespace }}"
+      register: r_hco
+      ignore_errors: true
+
+    # ── Exercise 2 checks (read-only — resources already exist) ────────────────
+
+    - name: Get all StorageClasses
+      kubernetes.core.k8s_info:
+        kubeconfig: "{{ k8s_kubeconfig | default(omit) }}"
+        validate_certs: false
+        api_version: storage.k8s.io/v1
+        kind: StorageClass
+      register: r_sc
+      ignore_errors: true
+
+    - name: Get StorageClass ocs-storagecluster-ceph-rbd detail
+      kubernetes.core.k8s_info:
+        kubeconfig: "{{ k8s_kubeconfig | default(omit) }}"
+        validate_certs: false
+        api_version: storage.k8s.io/v1
+        kind: StorageClass
+        name: "{{ rbd_sc }}"
+      register: r_rbd_sc
+      ignore_errors: true
+
+    - name: Get PersistentVolumes cluster-wide
+      kubernetes.core.k8s_info:
+        kubeconfig: "{{ k8s_kubeconfig | default(omit) }}"
+        validate_certs: false
+        api_version: v1
+        kind: PersistentVolume
+      register: r_pv
+      ignore_errors: true
+
+    - name: Get VolumeSnapshotClasses
+      kubernetes.core.k8s_info:
+        kubeconfig: "{{ k8s_kubeconfig | default(omit) }}"
+        validate_certs: false
+        api_version: snapshot.storage.k8s.io/v1
+        kind: VolumeSnapshotClass
+      register: r_vsc
+      ignore_errors: true
+
+    - name: Get StorageCluster in openshift-storage
+      kubernetes.core.k8s_info:
+        kubeconfig: "{{ k8s_kubeconfig | default(omit) }}"
+        validate_certs: false
+        api_version: ocs.openshift.io/v1
+        kind: StorageCluster
+        namespace: "{{ storage_namespace }}"
+      register: r_storagecluster
+      ignore_errors: true
+
+    # ── Exercise 3 (IBM Fusion B&R install) ───────────────────────────────────
+    # SKIP: UI-only workflow. The IBM Fusion Backup & Restore service is installed
+    # through the IBM Fusion Web Console. There is no publicly documented CR or
+    # operator subscription path that mirrors the UI install flow. Validation
+    # checks for the resulting Deployment/Pod presence are handled in validate.yml.
+
+    # ── Exercise 4: Create the RHEL 9 virtual machine ─────────────────────────
+
+    - name: Check whether VirtualMachine rhel9-test-vm already exists
+      kubernetes.core.k8s_info:
+        kubeconfig: "{{ k8s_kubeconfig | default(omit) }}"
+        validate_certs: false
+        api_version: kubevirt.io/v1
+        kind: VirtualMachine
+        name: "{{ vm_name }}"
+        namespace: "{{ vm_namespace }}"
+      register: r_vm_exists
+      ignore_errors: true
+
+    - name: Create VirtualMachine rhel9-test-vm in namespace default
+      kubernetes.core.k8s:
+        kubeconfig: "{{ k8s_kubeconfig | default(omit) }}"
+        validate_certs: false
+        state: present
+        definition:
+          apiVersion: kubevirt.io/v1
+          kind: VirtualMachine
+          metadata:
+            name: "{{ vm_name }}"
+            namespace: "{{ vm_namespace }}"
+            labels:
+              app: "{{ vm_name }}"
+              kubevirt.io/dynamic-credentials-support: "true"
+              vm.kubevirt.io/template: rhel9-server-small
+              vm.kubevirt.io/template.namespace: openshift
+          spec:
+            running: true
+            instancetype:
+              kind: VirtualMachineClusterInstancetype
+              name: u1.small
+            preference:
+              kind: VirtualMachineClusterPreference
+              name: rhel.9
+            dataVolumeTemplates:
+              - metadata:
+                  name: "{{ vm_name }}-volume"
+                spec:
+                  sourceRef:
+                    kind: DataSource
+                    name: rhel9
+                    namespace: openshift-virtualization-os-images
+                  storage:
+                    accessModes:
+                      - ReadWriteMany
+                    resources:
+                      requests:
+                        storage: 30Gi
+                    storageClassName: "{{ virt_sc }}"
+                    volumeMode: Block
+            template:
+              metadata:
+                labels:
+                  kubevirt.io/domain: "{{ vm_name }}"
+              spec:
+                domain:
+                  devices:
+                    disks:
+                      - name: rootdisk
+                        disk:
+                          bus: virtio
+                      - name: cloudinitdisk
+                        disk:
+                          bus: virtio
+                    interfaces:
+                      - name: default
+                        masquerade: {}
+                        model: virtio
+                networks:
+                  - name: default
+                    pod: {}
+                volumes:
+                  - name: rootdisk
+                    dataVolume:
+                      name: "{{ vm_name }}-volume"
+                  - name: cloudinitdisk
+                    cloudInitNoCloud:
+                      userData: |
+                        #cloud-config
+                        user: cloud-user
+                        password: redhat
+                        chpasswd:
+                          expire: false
+      when: r_vm_exists.resources | default([]) | length == 0
+      ignore_errors: true
+
+    - name: Wait for VirtualMachineInstance to reach Running phase (up to 10 min)
+      kubernetes.core.k8s_info:
+        kubeconfig: "{{ k8s_kubeconfig | default(omit) }}"
+        validate_certs: false
+        api_version: kubevirt.io/v1
+        kind: VirtualMachineInstance
+        name: "{{ vm_name }}"
+        namespace: "{{ vm_namespace }}"
+      register: r_vmi
+      retries: 30
+      delay: 20
+      until: >-
+        r_vmi.resources | default([]) | length > 0
+        and (r_vmi.resources | first).status.phase | default('') == 'Running'
+      ignore_errors: true
+
+    - name: Get PVC rhel9-test-vm-volume in namespace default
+      kubernetes.core.k8s_info:
+        kubeconfig: "{{ k8s_kubeconfig | default(omit) }}"
+        validate_certs: false
+        api_version: v1
+        kind: PersistentVolumeClaim
+        name: "{{ vm_name }}-volume"
+        namespace: "{{ vm_namespace }}"
+      register: r_pvc
+      ignore_errors: true
+
+    # ── Derived facts for report ───────────────────────────────────────────────
+
+    - name: Derive check facts
+      ansible.builtin.set_fact:
+        fact_csv_ok: >-
+          {{ r_cnv_csv | default([]) | length > 0
+             and (r_cnv_csv | first).status.phase | default('') == 'Succeeded' }}
+        fact_hco_ok: >-
+          {{ r_hco.resources | default([]) | length > 0 }}
+        fact_sc_rbd_ok: >-
+          {{ r_sc.resources | default([])
+             | selectattr('metadata.name', 'equalto', 'ocs-storagecluster-ceph-rbd')
+             | list | length > 0 }}
+        fact_sc_virt_ok: >-
+          {{ r_sc.resources | default([])
+             | selectattr('metadata.name', 'equalto', 'ocs-storagecluster-ceph-rbd-virtualization')
+             | list | length > 0 }}
+        fact_sc_cephfs_ok: >-
+          {{ r_sc.resources | default([])
+             | selectattr('metadata.name', 'equalto', 'ocs-storagecluster-cephfs')
+             | list | length > 0 }}
+        fact_sc_noobaa_ok: >-
+          {{ r_sc.resources | default([])
+             | selectattr('metadata.name', 'equalto', 'openshift-storage.noobaa.io')
+             | list | length > 0 }}
+        fact_rbd_provisioner_ok: >-
+          {{ r_rbd_sc.resources | default([]) | length > 0
+             and (r_rbd_sc.resources | first).provisioner | default('')
+                  == 'openshift-storage.rbd.csi.ceph.com' }}
+        fact_pv_rbd_ok: >-
+          {{ r_pv.resources | default([])
+             | selectattr('spec.storageClassName', 'equalto', 'ocs-storagecluster-ceph-rbd')
+             | list | length > 0 }}
+        fact_vsc_cephfs_ok: >-
+          {{ r_vsc.resources | default([])
+             | selectattr('metadata.name', 'equalto', 'ocs-storagecluster-cephfsplugin-snapclass')
+             | list | length > 0 }}
+        fact_vsc_rbd_ok: >-
+          {{ r_vsc.resources | default([])
+             | selectattr('metadata.name', 'equalto', 'ocs-storagecluster-rbdplugin-snapclass')
+             | list | length > 0 }}
+        fact_storagecluster_ok: >-
+          {{ r_storagecluster.resources | default([]) | length > 0
+             and (r_storagecluster.resources | first).status.phase | default('') == 'Ready' }}
+        fact_vmi_running: >-
+          {{ r_vmi.resources | default([]) | length > 0
+             and (r_vmi.resources | first).status.phase | default('') == 'Running' }}
+        fact_vm_exists: >-
+          {{ r_vm_exists.resources | default([]) | length > 0
+             or (r_vmi.resources | default([]) | length > 0) }}
+        fact_pvc_bound: >-
+          {{ r_pvc.resources | default([]) | length > 0
+             and (r_pvc.resources | first).status.phase | default('') == 'Bound'
+             and (r_pvc.resources | first).spec.storageClassName | default('')
+                  == 'ocs-storagecluster-ceph-rbd-virtualization' }}
+      ignore_errors: true
+
+    # ── Final report ──────────────────────────────────────────────────────────
+
+    - name: Report solve status
+      ansible.builtin.debug:
+        msg: |
+          === Module 1 Solve Report ===
+
+          Exercise 1 — OpenShift Virtualization operator:
+            CSV kubevirt-hyperconverged-operator (PHASE=Succeeded): {{ 'ok' if fact_csv_ok else 'NOT ok' }}
+            HyperConverged CR exists in openshift-cnv:              {{ 'ok' if fact_hco_ok else 'NOT ok' }}
+
+          Exercise 2 — IBM Fusion storage:
+            StorageClass ocs-storagecluster-ceph-rbd:               {{ 'ok' if fact_sc_rbd_ok else 'NOT ok' }}
+            StorageClass ocs-storagecluster-ceph-rbd-virtualization: {{ 'ok' if fact_sc_virt_ok else 'NOT ok' }}
+            StorageClass ocs-storagecluster-cephfs:                 {{ 'ok' if fact_sc_cephfs_ok else 'NOT ok' }}
+            StorageClass openshift-storage.noobaa.io:               {{ 'ok' if fact_sc_noobaa_ok else 'NOT ok' }}
+            RBD provisioner = openshift-storage.rbd.csi.ceph.com:  {{ 'ok' if fact_rbd_provisioner_ok else 'NOT ok' }}
+            At least one PV with storageClassName=ceph-rbd:         {{ 'ok' if fact_pv_rbd_ok else 'NOT ok' }}
+            VolumeSnapshotClass ocs-storagecluster-cephfsplugin:    {{ 'ok' if fact_vsc_cephfs_ok else 'NOT ok' }}
+            VolumeSnapshotClass ocs-storagecluster-rbdplugin:       {{ 'ok' if fact_vsc_rbd_ok else 'NOT ok' }}
+            StorageCluster ocs-storagecluster PHASE=Ready:          {{ 'ok' if fact_storagecluster_ok else 'NOT ok' }}
+
+          Exercise 3 — IBM Fusion Backup & Restore:
+            SKIPPED — UI-only installation; validate.yml checks pod/deployment presence.
+
+          Exercise 4 — Virtual machine:
+            VirtualMachine rhel9-test-vm exists in default:         {{ 'ok' if fact_vm_exists else 'NOT ok' }}
+            VirtualMachineInstance PHASE=Running:                   {{ 'ok' if fact_vmi_running else 'NOT ok' }}
+            PVC rhel9-test-vm-volume Bound / ceph-rbd-virtualization: {{ 'ok' if fact_pvc_bound else 'NOT ok' }}

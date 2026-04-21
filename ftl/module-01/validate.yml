@@ -1,0 +1,236 @@
+---
+- name: Module 1 - Exploring the Environment Validation
+  hosts: localhost
+  connection: local
+  gather_facts: false
+  vars:
+    student_user: "{{ user | default('') }}"
+    vm_name: rhel9-test-vm
+    vm_namespace: default
+    cnv_namespace: openshift-cnv
+    storage_namespace: openshift-storage
+    virt_sc: ocs-storagecluster-ceph-rbd-virtualization
+    rbd_sc: ocs-storagecluster-ceph-rbd
+
+  tasks:
+
+    # -------------------------------------------------------
+    # Check 1 — OpenShift Virtualization CSV
+    # -------------------------------------------------------
+    - name: Get OpenShift Virtualization CSV in openshift-cnv
+      kubernetes.core.k8s_info:
+        kubeconfig: "{{ k8s_kubeconfig | default(omit) }}"
+        validate_certs: false
+        api_version: operators.coreos.com/v1alpha1
+        kind: ClusterServiceVersion
+        namespace: "{{ cnv_namespace }}"
+      register: r_csv
+      ignore_errors: true
+
+    - name: Filter kubevirt-hyperconverged CSV
+      ansible.builtin.set_fact:
+        r_cnv_csv: >-
+          {{ r_csv.resources | default([])
+             | selectattr('metadata.name', 'match', 'kubevirt-hyperconverged-operator.*')
+             | list }}
+      ignore_errors: true
+
+    # -------------------------------------------------------
+    # Check 2 — HyperConverged CR
+    # -------------------------------------------------------
+    - name: Get HyperConverged CR in openshift-cnv
+      kubernetes.core.k8s_info:
+        kubeconfig: "{{ k8s_kubeconfig | default(omit) }}"
+        validate_certs: false
+        api_version: hco.kubevirt.io/v1beta1
+        kind: HyperConverged
+        namespace: "{{ cnv_namespace }}"
+      register: r_hco
+      ignore_errors: true
+
+    # -------------------------------------------------------
+    # Check 3 — StorageClasses
+    # -------------------------------------------------------
+    - name: Get all StorageClasses
+      kubernetes.core.k8s_info:
+        kubeconfig: "{{ k8s_kubeconfig | default(omit) }}"
+        validate_certs: false
+        api_version: storage.k8s.io/v1
+        kind: StorageClass
+      register: r_sc
+      ignore_errors: true
+
+    - name: Get StorageClass ocs-storagecluster-ceph-rbd detail
+      kubernetes.core.k8s_info:
+        kubeconfig: "{{ k8s_kubeconfig | default(omit) }}"
+        validate_certs: false
+        api_version: storage.k8s.io/v1
+        kind: StorageClass
+        name: "{{ rbd_sc }}"
+      register: r_rbd_sc
+      ignore_errors: true
+
+    # -------------------------------------------------------
+    # Check 4 — VolumeSnapshotClasses
+    # -------------------------------------------------------
+    - name: Get VolumeSnapshotClasses
+      kubernetes.core.k8s_info:
+        kubeconfig: "{{ k8s_kubeconfig | default(omit) }}"
+        validate_certs: false
+        api_version: snapshot.storage.k8s.io/v1
+        kind: VolumeSnapshotClass
+      register: r_vsc
+      ignore_errors: true
+
+    # -------------------------------------------------------
+    # Check 5 — StorageCluster health
+    # -------------------------------------------------------
+    - name: Get StorageCluster ocs-storagecluster in openshift-storage
+      kubernetes.core.k8s_info:
+        kubeconfig: "{{ k8s_kubeconfig | default(omit) }}"
+        validate_certs: false
+        api_version: ocs.openshift.io/v1
+        kind: StorageCluster
+        name: ocs-storagecluster
+        namespace: "{{ storage_namespace }}"
+      register: r_storagecluster
+      ignore_errors: true
+
+    # -------------------------------------------------------
+    # Check 6 — VirtualMachine and VMI
+    # -------------------------------------------------------
+    - name: Get VirtualMachine rhel9-test-vm in namespace default
+      kubernetes.core.k8s_info:
+        kubeconfig: "{{ k8s_kubeconfig | default(omit) }}"
+        validate_certs: false
+        api_version: kubevirt.io/v1
+        kind: VirtualMachine
+        name: "{{ vm_name }}"
+        namespace: "{{ vm_namespace }}"
+      register: r_vm
+      ignore_errors: true
+
+    - name: Get VirtualMachineInstance rhel9-test-vm in namespace default
+      kubernetes.core.k8s_info:
+        kubeconfig: "{{ k8s_kubeconfig | default(omit) }}"
+        validate_certs: false
+        api_version: kubevirt.io/v1
+        kind: VirtualMachineInstance
+        name: "{{ vm_name }}"
+        namespace: "{{ vm_namespace }}"
+      register: r_vmi
+      ignore_errors: true
+
+    # -------------------------------------------------------
+    # Check 7 — PVC
+    # -------------------------------------------------------
+    - name: Get PVC rhel9-test-vm-volume in namespace default
+      kubernetes.core.k8s_info:
+        kubeconfig: "{{ k8s_kubeconfig | default(omit) }}"
+        validate_certs: false
+        api_version: v1
+        kind: PersistentVolumeClaim
+        name: "{{ vm_name }}-volume"
+        namespace: "{{ vm_namespace }}"
+      register: r_pvc
+      ignore_errors: true
+
+    # -------------------------------------------------------
+    # Build task results
+    # -------------------------------------------------------
+    - name: Build task results
+      ansible.builtin.set_fact:
+        _task1_csv_ok: >-
+          {{ r_cnv_csv | default([]) | length > 0
+             and (r_cnv_csv | first).status.phase | default('') == 'Succeeded' }}
+        _task2_hco_ok: >-
+          {{ r_hco.resources | default([]) | length > 0 }}
+        _task3_sc_rbd_ok: >-
+          {{ r_sc.resources | default([])
+             | selectattr('metadata.name', 'equalto', 'ocs-storagecluster-ceph-rbd')
+             | list | length > 0 }}
+        _task3_sc_virt_ok: >-
+          {{ r_sc.resources | default([])
+             | selectattr('metadata.name', 'equalto', 'ocs-storagecluster-ceph-rbd-virtualization')
+             | list | length > 0 }}
+        _task3_sc_cephfs_ok: >-
+          {{ r_sc.resources | default([])
+             | selectattr('metadata.name', 'equalto', 'ocs-storagecluster-cephfs')
+             | list | length > 0 }}
+        _task3_sc_noobaa_ok: >-
+          {{ r_sc.resources | default([])
+             | selectattr('metadata.name', 'equalto', 'openshift-storage.noobaa.io')
+             | list | length > 0 }}
+        _task3_rbd_provisioner_ok: >-
+          {{ r_rbd_sc.resources | default([]) | length > 0
+             and (r_rbd_sc.resources | first).provisioner | default('')
+                  == 'openshift-storage.rbd.csi.ceph.com' }}
+        _task4_vsc_cephfs_ok: >-
+          {{ r_vsc.resources | default([])
+             | selectattr('metadata.name', 'equalto', 'ocs-storagecluster-cephfsplugin-snapclass')
+             | list | length > 0 }}
+        _task4_vsc_rbd_ok: >-
+          {{ r_vsc.resources | default([])
+             | selectattr('metadata.name', 'equalto', 'ocs-storagecluster-rbdplugin-snapclass')
+             | list | length > 0 }}
+        _task5_storagecluster_ok: >-
+          {{ r_storagecluster.resources | default([]) | length > 0
+             and (r_storagecluster.resources | first).status.phase | default('') == 'Ready' }}
+        _task6_vm_ok: >-
+          {{ r_vm.resources | default([]) | length > 0 }}
+        _task6_vmi_ok: >-
+          {{ r_vmi.resources | default([]) | length > 0
+             and (r_vmi.resources | first).status.phase | default('') == 'Running' }}
+        _task7_pvc_ok: >-
+          {{ r_pvc.resources | default([]) | length > 0
+             and (r_pvc.resources | first).status.phase | default('') == 'Bound'
+             and (r_pvc.resources | first).spec.storageClassName | default('')
+                  == 'ocs-storagecluster-ceph-rbd-virtualization' }}
+
+    # -------------------------------------------------------
+    # Derive aggregate results per exercise
+    # -------------------------------------------------------
+    - name: Derive aggregate exercise results
+      ansible.builtin.set_fact:
+        _ex1_ok: "{{ _task1_csv_ok and _task2_hco_ok }}"
+        _ex2_ok: >-
+          {{ _task3_sc_rbd_ok and _task3_sc_virt_ok and _task3_sc_cephfs_ok
+             and _task3_sc_noobaa_ok and _task3_rbd_provisioner_ok
+             and _task4_vsc_cephfs_ok and _task4_vsc_rbd_ok
+             and _task5_storagecluster_ok }}
+        _ex4_ok: "{{ _task6_vm_ok and _task6_vmi_ok and _task7_pvc_ok }}"
+
+    # -------------------------------------------------------
+    # Validate all tasks
+    # -------------------------------------------------------
+    - name: Validate all tasks
+      validation_check:
+        check: "{{ _ex1_ok and _ex2_ok and _ex4_ok }}"
+        pass_msg: |
+          Task 1: kubevirt-hyperconverged-operator CSV found with PHASE=Succeeded
+          Task 2: HyperConverged CR present in openshift-cnv
+          Task 3: All four IBM Fusion StorageClasses exist with correct RBD provisioner
+          Task 4: VolumeSnapshotClasses ocs-storagecluster-cephfsplugin-snapclass and ocs-storagecluster-rbdplugin-snapclass present
+          Task 5: StorageCluster ocs-storagecluster is Ready
+          Task 6: VirtualMachine rhel9-test-vm exists and VMI is Running
+          Task 7: PVC rhel9-test-vm-volume is Bound on ocs-storagecluster-ceph-rbd-virtualization
+        error_msg: |
+          {{ '[ok]' if _task1_csv_ok else '[FAILED]' }} Task 1: kubevirt-hyperconverged-operator CSV PHASE=Succeeded
+          {{ '  ' if _task1_csv_ok else '  FIX: Verify the OpenShift Virtualization operator installed successfully in the openshift-cnv namespace' }}
+          {{ '[ok]' if _task2_hco_ok else '[FAILED]' }} Task 2: HyperConverged CR present in openshift-cnv
+          {{ '  ' if _task2_hco_ok else '  FIX: The HyperConverged CR is missing — the CNV operator may still be installing' }}
+          {{ '[ok]' if _task3_sc_rbd_ok else '[FAILED]' }} Task 3a: StorageClass ocs-storagecluster-ceph-rbd present
+          {{ '[ok]' if _task3_sc_virt_ok else '[FAILED]' }} Task 3b: StorageClass ocs-storagecluster-ceph-rbd-virtualization present
+          {{ '[ok]' if _task3_sc_cephfs_ok else '[FAILED]' }} Task 3c: StorageClass ocs-storagecluster-cephfs present
+          {{ '[ok]' if _task3_sc_noobaa_ok else '[FAILED]' }} Task 3d: StorageClass openshift-storage.noobaa.io present
+          {{ '[ok]' if _task3_rbd_provisioner_ok else '[FAILED]' }} Task 3e: RBD provisioner = openshift-storage.rbd.csi.ceph.com
+          {{ '  ' if _ex2_ok else '  FIX: IBM Fusion storage classes are missing — confirm IBM Fusion Data Foundation is installed and the StorageCluster is Ready' }}
+          {{ '[ok]' if _task4_vsc_cephfs_ok else '[FAILED]' }} Task 4a: VolumeSnapshotClass ocs-storagecluster-cephfsplugin-snapclass present
+          {{ '[ok]' if _task4_vsc_rbd_ok else '[FAILED]' }} Task 4b: VolumeSnapshotClass ocs-storagecluster-rbdplugin-snapclass present
+          {{ '[ok]' if _task5_storagecluster_ok else '[FAILED]' }} Task 5: StorageCluster ocs-storagecluster PHASE=Ready
+          {{ '  ' if _task5_storagecluster_ok else '  FIX: Run oc get storagecluster -n openshift-storage and wait for PHASE=Ready' }}
+          {{ '[ok]' if _task6_vm_ok else '[FAILED]' }} Task 6a: VirtualMachine rhel9-test-vm exists in namespace default
+          {{ '[ok]' if _task6_vmi_ok else '[FAILED]' }} Task 6b: VirtualMachineInstance rhel9-test-vm PHASE=Running
+          {{ '  ' if _task6_vmi_ok else '  FIX: Create the VM using the wizard in the OpenShift Virtualization console or run Solve' }}
+          {{ '[ok]' if _task7_pvc_ok else '[FAILED]' }} Task 7: PVC rhel9-test-vm-volume Bound on ocs-storagecluster-ceph-rbd-virtualization
+          {{ '  ' if _task7_pvc_ok else '  FIX: PVC may still be provisioning — wait a few minutes and click Validate again' }}
