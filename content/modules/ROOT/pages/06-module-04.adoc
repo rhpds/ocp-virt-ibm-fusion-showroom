@@ -114,6 +114,13 @@ The Policies summary screen shows where backups are stored, the schedule for eac
 
 image::06-module-04-bnr-policy-summary.png[Back and Restore Policy New summary,link=self,window=blank,width=700,title="Back and Restore Policy Summary"]
 
+=== Verify
+
+Confirm the following in the IBM Fusion Backup & Restore console:
+
+* The backup location shows as **Connected**
+* Both the `daily-snapshot` and `weekly-backup` policies are listed in the Policies summary
+
 [[exercise-2]]
 == Exercise 2: Backup and Restore an Application 
 
@@ -135,7 +142,7 @@ image::06-module-04-bnr-verify-project.png[Varify New Project,link=self,window=b
 
 Use the following yaml file to create the filebrowser application:
 
-[source,bash]
+[source,yaml]
 ----
 kind: PersistentVolumeClaim
 apiVersion: v1
@@ -498,6 +505,11 @@ Login to the filebrowser application with the Username (A): admin and Password (
 
 image::06-module-04-bnr-application.png[Restoring Application,link=self,window=blank,width=700,title="Restoring Application"]
 
+=== Verify
+
+* The restored filebrowser application in the `filebrowser2` project is accessible via its route
+* The files and directories you uploaded earlier are present in the restored application
+
 [[exercise-3]]
 == Exercise 3: Backup and Restore Virtual Machines
 
@@ -570,6 +582,12 @@ image::06-module-04-bnr-vm-restore-complete.png[VM Restore Complete,link=self,wi
 Return to the OpenShift GUI. Navigate to the VirtualMachines screen by clicking on the Virtualization (A) menu item on the left-hand side navigation pane and selecting the VirtualMachines (B) sub-item. Use the Project selector to change to the vmrestore (C) project. Notice that the VirtualMachine has been restored to a new namespace and is in a Running Status.
 
 image::06-module-04-bnr-vm-list-restored.png[List Restored VM,link=self,window=blank,width=700,title="List Restored VM"]
+
+=== Verify
+
+* The virtual machine `rhel9-backup` is in **Running** status in the `vmrestore` project
+* The VM was restored to a new namespace successfully
+
 [[exercise-4]]
 == Exercise 4: Backup and Restore an Application with a recipe
 
@@ -602,7 +620,7 @@ image::06-module-04-bnr-create-pm-project-yaml.png[create pacman project,link=se
 
 Use the following YAML file to create the PacMan Application in the `pacman` namespace.
 
-[source,bash]
+[source,yaml]
 ----
 kind: PersistentVolumeClaim
 apiVersion: v1
@@ -835,6 +853,10 @@ Continue investigating the mongodb logs and find the fsyncUnlock log entry.
 
 image::06-module-04-bnr-mongo-logs2.png[Mongo Logs,link=self,window=blank,width=700,title="Mongo logs view"]
 
+=== Verify
+
+* The backup job for the `pacman` application completed successfully with the recipe hooks
+* The MongoDB logs show `fsyncLock` and `fsyncUnlock` commands, confirming application-consistent backup
 
 [[exercise-5]]
 == Exercise 5: Backup Service Protection
@@ -883,6 +905,10 @@ Confirm that backup service protection has been enabled for the IBM Fusion Backu
 
 image::06-module-04-bnr-service-enable.png[Service Protection Enable,link=self,window=blank,width=700,title="Service Protection Enable"]
 
+=== Verify
+
+* The Backup & Restore service protection is enabled
+* A service backup schedule is configured with the weekly policy
 
 == Module summary
 You have successfully explored the IBM Fusion Backup and Restore Service.
@@ -898,5 +924,5 @@ You have successfully explored the IBM Fusion Backup and Restore Service.
 **Key takeaways:**
 
 * Fusion Backup and Restore is a key component of IBM Fusion and enhances Red Hat OpenShift.
-* IBM Fusion Backup and Restore has an easy to administor user interface. 
+* IBM Fusion Backup and Restore has an easy to administer user interface. 
 * Backup policies allow the customization of scheduled backup and create application consistent backups.

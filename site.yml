@@ -19,5 +19,8 @@ antora:
   extensions:
   - '@sntke/antora-mermaid-extension'
 
+runtime:
+  fetch: true
+
 output:
   dir: ./www
