@@ -60,7 +60,7 @@ TIP: If the bastion tab is not responsive, click the refresh arrow for the tab t
 
 image::03-module-01-refresh-bastion-tab.png[Refresh Bastion Tab if Stale and not Responsive,link=self,window=blank,width=700,title="Bastion Tab Refresh"]
 
-[source,bash]
+[source,role="execute"]
 ----
 oc get csv -n openshift-cnv
 ----
@@ -74,7 +74,7 @@ kubevirt-hyperconverged-operator.v4.20.8   OpenShift Virtualization   4.20.8    
 
 Check that the HyperConverged custom resource is available:
 
-[source,bash]
+[source,role="execute"]
 ----
 oc get hyperconverged -n openshift-cnv
 ----
@@ -110,7 +110,7 @@ image::03-module-01-console-datafoundation-overview.png[IBM Fusion Integration w
 +
 image::03-module-01-console-datafoundation-storagecluster.png[IBM Fusion Storage Cluster Overview,link=self,window=blank,width=700,title="Overview of IBM Fusion Storage Cluster"]
 +
-TIP: One in the Storage Cluster overview you can look at the specific storage type provided by clicking the specific types of storage as highlighted with a number 2.
+TIP: Once in the Storage Cluster overview you can look at the specific storage type provided by clicking the specific types of storage as highlighted with a number 2.
 +
 * Block and File storage
 * Object storage
@@ -119,7 +119,7 @@ TIP: One in the Storage Cluster overview you can look at the specific storage ty
 
 . From the command line, list all available storage classes:
 +
-[source,bash]
+[source,role="execute"]
 ----
 oc get storageclass
 ----
@@ -138,7 +138,7 @@ openshift-storage.noobaa.io                  openshift-storage.noobaa.io/obc    
 
 . Examine the details of an IBM Fusion storage class:
 +
-[source,bash]
+[source,role="execute"]
 ----
 oc get storageclass ocs-storagecluster-ceph-rbd -o yaml
 ----
@@ -186,7 +186,7 @@ volumeBindingMode: Immediate
 
 . Check what persistent volumes are currently provisioned:
 +
-[source,bash]
+[source,role="execute"]
 ----
 oc get pv -o custom-columns="NAME:.metadata.name,SIZE:.spec.capacity.storage,ACCESS MODES:.spec.accessModes[0],STORAGE CLASS:.spec.storageClassName,CLAIM:.spec.claimRef.name"
 ----
@@ -213,7 +213,7 @@ TIP: Have a look specifically at the one for the IBM Fusion storage class named 
 
 . Verify that volume snapshot classes are available for VM snapshots:
 +
-[source,bash]
+[source,role="execute"]
 ----
 oc get volumesnapshotclass
 ----
@@ -229,7 +229,7 @@ ocs-storagecluster-rbdplugin-snapclass      openshift-storage.rbd.csi.ceph.com  
 
 . Verify that IBM Fusion storage is operational:
 +
-[source,bash]
+[source,role="execute"]
 ----
 oc get storagecluster -n openshift-storage
 ----
@@ -249,7 +249,7 @@ Expected output from the two commands above show.
 [[exercise-3]]
 == Exercise 3: Explore IBM Fusion Backup and Restore Service
 
-Along IBM Fusion enterprise-grade storage for your OpenShift cluster, it also provides backup and restore servcies for your virtual machgines and applications.
+Along with IBM Fusion enterprise-grade storage for your OpenShift cluster, it also provides backup and restore services for your virtual machines and applications.
 In this exercise, you will examine the backup and restore service and its configuration.
 
 . Open the IBM Fusion UI using the application selector at the top of the Red Hat OpenShift Web Console as illustrated below.
@@ -280,9 +280,16 @@ image::03-module-01-FusionUI-BnR-NewInstall-3.png[Select the Storage Class for t
 +
 image::03-module-01-FusionUI-BnR-NewInstall-4.png[Start the Deployment of the Backup & Restore Service,link=self,window=blank,width=700,title="Initiate the Deployment of IBM Fusion Backup & Restore"]
 
-. The IBM Fusion Backup & Restore Service is not being installed as illustrated below.
+. The IBM Fusion Backup & Restore Service is now being installed as illustrated below.
 +
 image::03-module-01-FusionUI-BnR-NewInstall-5.png[Deployment of the Backup & Restore Service started,link=self,window=blank,width=700,title="IBM Fusion Backup & Restore is being installed"]
+
+=== Verify
+
+Confirm that the IBM Fusion Backup & Restore service installation has started:
+
+* The service tile in the IBM Fusion **Services** tab shows the Backup & Restore service status as installing or installed
+* The installation progress is visible in the IBM Fusion UI
 
 This completes this part of the lab. The IBM Fusion Backup & Restore functionality will be configured and used in the optional **Module 4**.
 
@@ -323,7 +330,7 @@ image::03-module-01-console-virtualization-createvm-4b.png[VM Console Tab Access
 
 Switch to the `Bastion` tab in your Web browser. Confirm your VM is running from the command line:
 
-[source,bash]
+[source,role="execute"]
 ----
 oc get vmi -A
 ----
@@ -337,14 +344,14 @@ default     rhel9-test-vm   <age> Running   10.x.x.x       ip-<AWS_IP>.us-east-2
 
 Check the VM details:
 
-[source,bash]
+[source,role="execute"]
 ----
 oc describe vm rhel9-test-vm -n default
 ----
 
 Verify the persistent volume claim was created with IBM Fusion storage class `ocs-storagecluster-ceph-rbd-virtualization`:
 
-[source,bash]
+[source,role="execute"]
 ----
 oc get pvc -n default
 ----

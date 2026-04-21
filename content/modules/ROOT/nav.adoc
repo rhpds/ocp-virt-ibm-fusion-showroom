@@ -25,3 +25,5 @@
 ** xref:06-module-04.adoc#exercise-3[Exercise 3: Backup and Restore Virtual Machines]
 ** xref:06-module-04.adoc#exercise-4[Exercise 4: Backup and Restore an Application with a recipe]
 ** xref:06-module-04.adoc#exercise-5[Exercise 5: Backup Service Protection]
+
+* xref:07-conclusion.adoc[Workshop Conclusion]

@@ -65,7 +65,7 @@ This lab environment is fully pre-configured. The following components are alrea
 
 Run these commands to verify your environment:
 
-[source,bash]
+[source,role="execute"]
 ----
 # Verify OpenShift CLI access
 oc whoami

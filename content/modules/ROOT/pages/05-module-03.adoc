@@ -10,7 +10,7 @@ Live migration is the process of moving a running virtual machine (VM) to anothe
 
 By default, live migration traffic is encrypted using Transport Layer Security (TLS).
 
-Reastons for VM Migration:
+Reasons for VM migration:
 
 Load Balancing: 
 VMs can be moved to host machines with lower usage if their host becomes overloaded or if another host is under-utilized. Through load-balancing, you can improve VMs capacity and network performance.
@@ -22,7 +22,7 @@ Geographic migration:
 VM can be moved to another physical location for lower latency or when required for fault tolerance or disaster recovery.
 
 
-=== Live migration requirements. 
+== Live migration requirements 
 
 * The cluster must have shared storage with ReadWriteMany (RWX) access mode.
 * The cluster must have sufficient RAM and network bandwidth.
@@ -37,7 +37,7 @@ By the end of this module, you will be able to:
 * Migrate a virtual machine to a new storage class
 
 [[exercise-1]]
-== Exercise 1: VM Live Migration Exercise 1
+== Exercise 1: VM live migration
 
 In this exercise, you will create a new virtual machine and migrate it between worker nodes in an OpenShift cluster. 
 
@@ -73,7 +73,7 @@ Once it is complete, check the `node` the VM is running on. It should be the nod
 
 
 [[exercise-2]]
-== Exercise 2: VM Live Storage Migration Exercise 2
+== Exercise 2: VM live storage migration
 
 In this exercise, you will perform a storage migration from the existing storage class to a new storage class. 
 
@@ -81,7 +81,7 @@ As with "exercise-1", select a virtual machine you created and check its storage
 
 Navigate to `Storage`, `StorageClasses`:
 
-image:06-module-03-vm-storage-classes.png[Virtual Machine Storage Classes,link=self,window=blank,width=700,title="Virtual Machine Storage Classes"]
+image::06-module-03-vm-storage-classes.png[Virtual Machine Storage Classes,link=self,window=blank,width=700,title="Virtual Machine Storage Classes"]
 
 `ocs-storagecluster-cephfs` and `ocs-storagecluster-ceph-rbd-virtualization` are both good classes for virtual machines. 
 
@@ -89,37 +89,37 @@ Navigate back to your list of virtual machines and select a running VM.
 
 You can check the storage class in use by selecting `Configuration`, `Storage`
 
-image:06-module-03-vm-storage-class.png[Virtual Machine Storage Class,link=self,window=blank,width=700,title="Virtual Machine Storage Class"]
+image::06-module-03-vm-storage-class.png[Virtual Machine Storage Class,link=self,window=blank,width=700,title="Virtual Machine Storage Class"]
 
 Now navigate back to the `Overview` and select `migration`, `storage`
 
-image:06-module-03-vm-storage-migration.png[Virtual Machine Storage Migration,link=self,window=blank,width=700,title="Virtual Machine Storage Migration"]
+image::06-module-03-vm-storage-migration.png[Virtual Machine Storage Migration,link=self,window=blank,width=700,title="Virtual Machine Storage Migration"]
 
 This will start the dialog box:
 
-image:06-module-03-vm-storage-migration-dialog.png[Virtual Machine Storage Migration Dialog,link=self,window=blank,width=700,title="Virtual Machine Storage Migration Dialog"]
+image::06-module-03-vm-storage-migration-dialog.png[Virtual Machine Storage Migration Dialog,link=self,window=blank,width=700,title="Virtual Machine Storage Migration Dialog"]
 
 Select `The entire VirtualMachine` and `next`
 
-image:06-module-03-vm-storage-migration-newclass.png[Virtual Machine Storage Migration New Class,link=self,window=blank,width=700,title="Virtual Machine Storage Migration New Class"]
+image::06-module-03-vm-storage-migration-newclass.png[Virtual Machine Storage Migration New Class,link=self,window=blank,width=700,title="Virtual Machine Storage Migration New Class"]
 
 `Next` and then `Migrate VirtualMachine`:
 
-image:06-module-03-vm-storage-migrate.png[Virtual Machine Storage Migrate,link=self,window=blank,width=700,title="Virtual Machine Storage Migrate"]
+image::06-module-03-vm-storage-migrate.png[Virtual Machine Storage Migrate,link=self,window=blank,width=700,title="Virtual Machine Storage Migrate"]
 
 Now the migration will show running
 
-image:06-module-03-vm-storage-migration-running.png[Virtual Machine Storage Migration Running,link=self,window=blank,width=700,title="Virtual Machine Storage Migration Running"]
+image::06-module-03-vm-storage-migration-running.png[Virtual Machine Storage Migration Running,link=self,window=blank,width=700,title="Virtual Machine Storage Migration Running"]
 
 when completed
 
-image:06-module-03-vm-storage-migration-done.png[Virtual Machine Storage Migration Done,link=self,window=blank,width=700,title="Virtual Machine Storage Migration Done"]
+image::06-module-03-vm-storage-migration-done.png[Virtual Machine Storage Migration Done,link=self,window=blank,width=700,title="Virtual Machine Storage Migration Done"]
 
 === Verify
 
-Navigate back to `configuration`, `storage` and varify the storage change:
+Navigate back to `configuration`, `storage` and verify the storage change:
 
-image:06-module-03-vm-storage-migration-varify.png[Virtual Machine Storage Migration Varify,link=self,window=blank,width=700,title="Virtual Machine Storage Migration Varify"]
+image::06-module-03-vm-storage-migration-varify.png[Virtual Machine Storage Migration Varify,link=self,window=blank,width=700,title="Virtual Machine Storage Migration Varify"]
 
 == Learning outcomes
 

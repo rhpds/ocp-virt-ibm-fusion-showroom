@@ -37,7 +37,7 @@ TIP: The *VM is to VMI as Deployment is to Pod*. The VM is defined once and the 
 
 == Virtual Machine states
 
-A virtual machone transitions through specific states during its lifecycle. It is essential to udnerstand each state:o
+A virtual machine transitions through specific states during its lifecycle. It is essential to understand each state:
 
 [cols="1,2,2",options="header"]
 |===
@@ -63,7 +63,7 @@ Declarative, version-controllable definition. Preferred for automation and GitOp
 virtctl CLI::
 Imperative command-line creation. Useful for quick provisioning in scripted environments.
 
-=== VM Manifest Anatomy
+=== VM manifest anatomy
 
 A `VirtualMachine` manifest is a standard Kubernetes object. The following annotated example creates a RHEL 9 VM with 2 vCPUs, 4 GiB RAM, and a 30 GiB boot disk cloned from a golden image.
 
@@ -141,7 +141,7 @@ spec:
 
 TIP: Using `dataVolumeTemplates` keeps the disk definition co-located with the VM. When the VM is deleted, the associated DataVolume and PVC are also deleted automatically unless the PVC is first unlinked.
 
-=== Cloud-Init Customization
+=== Cloud-init customization
 
 Cloud-init runs inside the VM on first boot and configures the guest operating system. OpenShift Virtualization supports two cloud-init data sources:
 
@@ -182,7 +182,7 @@ In this exercise you will create a RHEL 9 virtual machine from a YAML manifest, 
 
 . Setup your namespace
 +
-[source, bash]
+[source,role="execute"]
 ----
 oc new-project vmlab-student
 ----
@@ -203,7 +203,7 @@ to build a new example application in Ruby. Or use kubectl to deploy a simple Ku
 
 . Create VM Manifest
 +
-[source, bash]
+[source,role="execute"]
 ----
 cat > rhel9-webserver.yaml << 'EOF'
 apiVersion: kubevirt.io/v1
@@ -288,7 +288,7 @@ EOF
 
 . Generate SSH key
 +
-[source, bash]
+[source,role="execute"]
 ----
 ssh-keygen
 ----
@@ -297,7 +297,7 @@ NOTE: Use <CR> for each question
 
 . Verify the publick key has been generated
 +
-[source, bash]
+[source,role="execute"]
 ----
 cat ~/.ssh/id_rsa.pub
 ----
@@ -310,7 +310,7 @@ ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABgQC6K3QfkXhrBio5lWExoRgfx+83GWW5MDFw542kAVU+
 
 . Customize your VM custom resource before we create it using your new SSH key
 +
-[source, bash]
+[source,role="execute"]
 ----
 export THEKEY=$(cat ~/.ssh/id_rsa.pub)
 sed -i -e "s_{PUBKEY}_${THEKEY}_g" rhel9-webserver.yaml
@@ -320,7 +320,7 @@ NOTE: We are using `_` as a delimiter for the `sed` command knowing that the gen
 
 . Apply the manifest to create the virtual machine
 +
-[source, bash]
+[source,role="execute"]
 ----
 oc apply -f rhel9-webserver.yaml
 ----
@@ -333,7 +333,7 @@ virtualmachine.kubevirt.io/rhel9-webserver created
 
 . Verify the VM status
 +
-[source, bash]
+[source,role="execute"]
 ----
 oc get vm -n vmlab-student
 ----
@@ -349,7 +349,7 @@ NOTE: You can see that the status of the VM is `Stopped` and the readiness is `F
 
 . Install CLI tool on your bastion node
 +
-[source, bash]
+[source,role="execute"]
 ----
 curl -L https://$(oc get route hyperconverged-cluster-cli-download -n openshift-cnv -o jsonpath='{.spec.host}')/amd64/linux/virtctl.tar.gz -o virtctl.tar.gz
 tar -xzf virtctl.tar.gz
@@ -358,7 +358,7 @@ chmod +x virtctl && sudo mv virtctl /usr/local/bin/
 
 . Start the VM and observe object creation
 +
-[source, bash]
+[source,role="execute"]
 ----
 virtctl start rhel9-webserver -n vmlab-student
 ----
@@ -373,7 +373,7 @@ VM rhel9-webserver was scheduled to start
 
 . Watch the VM reach Running state
 +
-[source, bash]
+[source,role="execute"]
 ----
 oc get vm rhel9-webserver -n vmlab-student -w
 ----
@@ -389,7 +389,7 @@ TIP: Wait for status to be `Running` and readiness to be `True`
 
 . Observe the VMI object that was created
 +
-[source, bash]
+[source,role="execute"]
 ----
 oc get vmi -n vmlab-student
 ----
@@ -403,7 +403,7 @@ rhel9-webserver   <age>  Running   10.<x.y.z>     ip-<nodename>.us-east-2.comput
 
 . Find the virt-launcher pod backing this VM
 +
-[source, bash]
+[source,role="execute"]
 ----
 oc get pods -n vmlab-student -l vm.kubevirt.io/name=rhel9-webserver
 ----
@@ -417,7 +417,7 @@ virt-launcher-rhel9-webserver-<xxx>   2/2     Running   0          <age>
 
 . Describe the VMI for scheduling and resource details
 +
-[source, bash]
+[source,role="execute"]
 ----
 oc describe vmi rhel9-webserver -n vmlab-student
 ----
@@ -436,7 +436,7 @@ Events:
 
 . Check DataVolume import status
 +
-[source,bash]
+[source,role="execute"]
 ----
 oc get dv -n vmlab-student
 ----
@@ -452,7 +452,7 @@ NOTE: Note that the import progress field shows `100.0%`
 
 . Connect to the VM console
 +
-[source, bash]
+[source,role="execute"]
 ----
 # Attach to the serial console (Ctrl+] to exit)
 virtctl console rhel9-webserver -n vmlab-student
@@ -460,9 +460,8 @@ virtctl console rhel9-webserver -n vmlab-student
 +
 WARNING: It will take some time for the VM to start and the `cloud-init` step to complete. Once messages stop flowing on your screen, the VM is ready.
 
-. Login the VM
+. Log in to the VM
 +
-[source, bash]
 ----
 rhel9-webserver login: cloud-user
 Password: redhat123
@@ -472,7 +471,7 @@ TIP: Hit <CR> to get to the login prompt. The VM username is `cloud-user` and th
 
 . Verify the VM deployment is complete
 +
-[source, bash]
+[source,role="execute"]
 ----
 sudo cloud-init status
 ----
@@ -485,7 +484,7 @@ status: done
 
 . Verify the WEB server status
 +
-[source, bash]
+[source,role="execute"]
 ----
 sudo systemctl status httpd
 ----
@@ -507,7 +506,7 @@ Expected output:
 
 . Verify the WEB server is operational
 +
-[source, bash]
+[source,role="execute"]
 ----
 curl http://localhost
 ----
@@ -520,7 +519,7 @@ This is the WEB server before failure.
 
 . Exit your VM
 +
-[source, bash]
+[source,role="execute"]
 ----
 exit
 ----
@@ -531,7 +530,7 @@ TIP: Hit `CTRL+5` to disconnect from the VM console
 
 . Confirm the VM is running and on what specific node
 +
-[source,bash]
+[source,role="execute"]
 ----
 oc get pods -l vm.kubevirt.io/name=rhel9-webserver -o custom-columns="NAME:.metadata.name,STATUS:.status.phase,NODE:.spec.nodeName"
 ----
@@ -545,7 +544,7 @@ virt-launcher-rhel9-webserver-<xxx>   Running   ip-<nodename>.us-east-2.compute.
 
 . Confirm how many PVCs were created
 +
-[source, bash]
+[source,role="execute"]
 ----
 oc get pvc -o custom-columns="NAME:.metadata.name,SIZE:.status.capacity.storage,ACCESS MODES:.spec.accessModes[0],STORAGE CLASS:.spec.storageClassName"
 ----
@@ -559,7 +558,7 @@ rhel9-webserver-rootdisk   30Gi   ReadWriteMany   ocs-storagecluster-ceph-rbd-vi
 
 . Confirm the IP address assigned to the VM
 +
-[source, bash]
+[source,role="execute"]
 ----
 oc get vmi -o yaml | grep ipAddress:
 ----
@@ -577,7 +576,7 @@ In this exercise you have verified:
 * The number of DataVolumes for this VM is 1
 * You have verified the IP address assigned to the VM
 
-== Operating Virtual Machines
+== Operating virtual machines
 
 === `virtctl` CLI
 
@@ -610,7 +609,7 @@ Key `virtctl` commands and their purposes:
 | `virtctl removevolume <vm>` | Hot-unplug a previously attached disk
 |===
 
-=== Power Operations
+=== Power operations
 
 The `start`, `stop`, and `restart` operations manage the VM power state. These actions are recorded in the VM status and trigger VMI creation or deletion accordingly.
 
@@ -691,7 +690,7 @@ virtctl ssh cloud-user@vm/<vm-name> -n <namespace> \
  
 TIP: You can also use the VMI to `ssh` into the virtual machine
 
-=== Storage Concepts
+=== Storage concepts
 
 Each VM disk maps to a PersistentVolumeClaim (PVC) in Kubernetes. Understanding access modes is critical because they directly affect which operations are possible:
 
@@ -706,7 +705,7 @@ Read-only access from multiple nodes. Used for shared, immutable data.
 
 WARNING: Always provision VM boot disks with *ReadWriteMany* access mode if you plan to use live migration. Attempting to migrate a VM with RWO disks will fail with an error in the `VirtualMachineInstanceMigration` status.
 
-=== DataVolumes and Import Sources
+=== DataVolumes and import sources
 
 A DataVolume (DV) orchestrates getting disk images into PVCs. It supports several import sources:
 
@@ -716,7 +715,7 @@ A DataVolume (DV) orchestrates getting disk images into PVCs. It supports severa
 * *Upload* — upload a local disk image via `virtctl image-upload`
 * *Blank* — create an empty disk (used for data disks)
 
-i=== Hot-Plugging Disks
+=== Hot-plugging disks
 
 Red Hat OpenShift Virtualization supports attaching and detaching PVC-backed disks to a running VM without rebooting. This is useful for attaching scratch space, shared data volumes, or importing data.
 
@@ -762,12 +761,12 @@ virtctl removevolume <vm-name> \
 
 . Confirm the VM is running
 +
-[source, bash]
+[source,role="execute"]
 ----
 oc get vm,vmi -n vmlab-student
 ----
 +
-Expercted output:
+Expected output:
 +
 ----
 NAME                                         AGE     STATUS    READY
@@ -780,7 +779,7 @@ virtualmachineinstance.kubevirt.io/rhel9-webserver   <age>   Running   10.<x>.<y
 
 . Pause the VM
 +
-[source, bash]
+[source,role="execute"]
 ----
 virtctl pause vm rhel9-webserver -n vmlab-student
 ----
@@ -793,7 +792,7 @@ VMI rhel9-webserver was scheduled to pause
 
 .  Verify the status of the VM
 +
-[source, bash]
+[source,role="execute"]
 ----
 oc get vmi rhel9-webserver -n vmlab-student -o wide
 ----
@@ -809,7 +808,7 @@ WARNING: Pay attention to the `READY` and `PAUSED` columns for the VMI
 
 . Unpause the VM
 +
-[source, bash]
+[source,role="execute"]
 ----
 virtctl unpause vm rhel9-webserver -n vmlab-student
 ----
@@ -822,7 +821,7 @@ VMI rhel9-webserver was scheduled to unpause
 
 . Check the status of the VMI
 +
-[source, bash]
+[source,role="execute"]
 ----
 oc get vmi rhel9-webserver -n vmlab-student -o wide
 ----
@@ -838,7 +837,7 @@ WARNING: Pay attention to the `READY` and `PAUSED` columns for the VMI
 
 . Perform a graceful restart of the VM
 +
-[source, bash]
+[source,role="execute"]
 ----
 virtctl restart rhel9-webserver -n vmlab-student
 ----
@@ -851,7 +850,7 @@ VM rhel9-webserver was scheduled to restart
 
 . Watch the VMI object recreate (old one deleted, new one appears)
 +
-[source, bash]
+[source,role="execute"]
 ----
 oc get vmi -n vmlab-student -w
 ----
@@ -866,7 +865,7 @@ rhel9-webserver   <age> Running   10.<x>.<y>.<z> ip-<nodename>.us-east-2.compute
 
 . SSH through the API tunnel
 +
-[source, bash]
+[source,role="execute"]
 ----
 virtctl ssh -i ~/.ssh/id_rsa cloud-user@vm/rhel9-webserver -n vmlab-student
 ----
@@ -896,7 +895,7 @@ TIP: Remember you injected your SSH key in the VM custom resource in the first e
 
 Confirm the VMI Custom Resource is linked to the VM state
 
-[source,bash]
+[source,role="execute"]
 ----
 oc get vmi -n vmlab-student
 virtctl stop --force --grace-period=0 rhel9-webserver -n vmlab-student
@@ -918,7 +917,7 @@ rhel9-webserver   32m   Succeeded                  ip-10-0-7-182.us-east-2.compu
 
 Confirm status of `virt-launcher` pod
  
-[source, bash]
+[source,role="execute"]
 ----
 oc get pod -n vmlab-student | grep virt-launcher
 ----
@@ -931,7 +930,7 @@ No resources found in vmlab-student namespace.
 
 Confirm what happens when the VM restarts
  
-[source, bash]
+[source,role="execute"]
 ----
 virtctl start rhel9-webserver -n vmlab-student
 oc get vmi -n vmlab-student -w
@@ -957,7 +956,7 @@ Expected output should show the following
 
 == Snapshots
 
-=== VM Snapshots
+=== VM snapshots
 
 A `VirtualMachineSnapshot` captures the state of a VM's disks at a point in time. Snapshots are useful for creating restore points before risky changes such as OS upgrades, configuration changes, or application updates.
 
@@ -1022,7 +1021,7 @@ virtctl start <vm-name> -n <namespace>
 
 . Stop the virtual machine
 +
-[source, bash]
+[source,role="execute"]
 ----
 virtctl stop rhel9-webserver -n vmlab-student
 ----
@@ -1036,7 +1035,7 @@ VM rhel9-webserver was scheduled to stop
 
 . Snapshot the virtual machine
 +
-[source, bash]
+[source,role="execute"]
 ----
 cat << 'EOF' | oc apply -f -
 apiVersion: snapshot.kubevirt.io/v1beta1
@@ -1060,7 +1059,7 @@ virtualmachinesnapshot.snapshot.kubevirt.io/rhel9-webserver-pre-change created
 
 . Verify the snapshot exists and succeeded
 +
-[source, bash]
+[source,role="execute"]
 ----
 oc get vmsnapshot -n vmlab-student -w
 ----
@@ -1076,7 +1075,7 @@ TIP: Verify the snapshot `PHASE=Succeeded` and `READYTOUSE=true`.
 
 . Restart the virtual machine
 +
-[source, bash]
+[source,role="execute"]
 ----
 virtctl start rhel9-webserver -n vmlab-student
 ----
@@ -1089,7 +1088,7 @@ VM rhel9-webserver was scheduled to start
 
 . Simulate failure
 +
-[source, bash]
+[source,role="execute"]
 ----
 virtctl ssh -i ~/.ssh/id_rsa cloud-user@vm/rhel9-webserver -n vmlab-student
 sudo systemctl stop httpd
@@ -1098,7 +1097,7 @@ sudo dnf remove -y httpd
 
 . Verify Webserver stopped inside the VM
 +
-[source, bash]
+[source,role="execute"]
 ----
 curl http://localhost
 curl: (7) Failed to connect to localhost port 80: Connection refused
@@ -1109,7 +1108,7 @@ NOTE: Disconnect from the virtual machine using `exit` followed by `CTRL+5`
 
 . Stop the virtual machine
 +
-[source, bash]
+[source,role="execute"]
 ----
 virtctl stop rhel9-webserver -n vmlab-student
 ----
@@ -1122,7 +1121,7 @@ VM rhel9-webserver was scheduled to stop
 
 . Restore the virtual machine
 +
-[source, bash]
+[source,role="execute"]
 ----
 cat << 'EOF' | oc apply -f -
 apiVersion: snapshot.kubevirt.io/v1beta1
@@ -1147,7 +1146,7 @@ virtualmachinerestore.snapshot.kubevirt.io/rhel9-webserver-restore-pre created
 
 . Verify the status of the restore
 +
-[source, bash]
+[source,role="execute"]
 ----
 oc get vmrestore rhel9-webserver-restore-pre -n vmlab-student -w
 ----
@@ -1163,7 +1162,7 @@ NOTE: Verify the status of the restore shows `COMPLETE=true`
 
 . Restart the virtual machine when restore is complete
 +
-[source, bash]
+[source,role="execute"]
 ----
 virtctl start rhel9-webserver -n vmlab-student
 ----
@@ -1180,7 +1179,7 @@ Now that the restore has completed it is important to verify the restore was suc
 
 Verify the webserver is opertational again
  
-[source, bash]
+[source,role="execute"]
 ----
 virtctl ssh -i ~/.ssh/id_rsa cloud-user@vm/rhel9-webserver -n vmlab-student \
   -c 'curl http://localhost' 2>/dev/null
@@ -1196,9 +1195,9 @@ Expected output should show the following
 
 * The webserver is operational
 
-== VM Decommissioning and Cleanup
+== VM decommissioning and cleanup
 
-=== Planned Decommissioning
+=== Planned decommissioning
 
 Decommissioning a VM is a multi-step process. Rushing it can result in data loss or orphaned storage objects. Follow this procedure for a safe, clean decommission:
 
@@ -1209,7 +1208,7 @@ Decommissioning a VM is a multi-step process. Rushing it can result in data loss
 . Delete the VM object — this cascades to delete associated DataVolumes and PVCs created via `dataVolumeTemplates`.
 . Verify all associated objects are removed.
 
-=== Deletion Commands
+=== Deletion commands
 
 [source,bash]
 ----
@@ -1230,7 +1229,7 @@ oc get vm,vmi,dv,pvc,vmsnapshot -n <namespace>
 oc delete pvc <volume-name> -n <namespace>
 ----
 
-=== Protecting Against Accidental Deletion
+=== Protecting against accidental deletion
 
 To prevent accidental deletion of production VMs, use Kubernetes finalizers or resource annotations. Red Hat OpenShift Virtualization also supports a deletion protection annotation:
 
@@ -1249,9 +1248,9 @@ oc annotate vm <vm-name> -n <namespace> \
   kubevirt.io/vm-deletion-protection-
 ----
 
-== VM Lifecycle Issues
+== VM lifecycle issues
 
-=== VM Stuck in Scheduling State
+=== VM stuck in scheduling state
 
 If a VM stays in `Scheduling`/`Pending` for more than a few minutes, investigate using the following approach:
 
@@ -1288,7 +1287,7 @@ You have successfully explored the OpenShift Virtualization lifecycle management
 
 **What you accomplished:**
 
-* Navigate and identify Red Hat OpenShift Virtualixation CRs
+* Navigate and identify Red Hat OpenShift Virtualization CRs
 * Interact with the state of a virtual machine
 * Connect to your virtual machine
 * Backed up and restored a virtual machine using snapshots
