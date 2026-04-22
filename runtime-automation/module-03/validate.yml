@@ -1,0 +1,135 @@
+---
+- name: Module 3 - VM Live Migration Validation
+  hosts: localhost
+  connection: local
+  gather_facts: false
+  vars:
+    vm_name: rhel9-test-vm
+    vm_namespace: default
+    src_sc: ocs-storagecluster-ceph-rbd-virtualization
+    dst_sc: ocs-storagecluster-ceph-rbd
+
+  tasks:
+
+    # -------------------------------------------------------
+    # Check 1 — VMI rhel9-test-vm exists and is Running
+    # -------------------------------------------------------
+    - name: Check VMI rhel9-test-vm exists and is Running
+      kubernetes.core.k8s_info:
+        kubeconfig: "{{ k8s_kubeconfig }}"
+        validate_certs: false
+        api_version: kubevirt.io/v1
+        kind: VirtualMachineInstance
+        name: "{{ vm_name }}"
+        namespace: "{{ vm_namespace }}"
+      register: r_vmi
+      ignore_errors: true
+
+    # -------------------------------------------------------
+    # Check 2 — Any VMIM for rhel9-test-vm reached Succeeded
+    # -------------------------------------------------------
+    - name: List all VirtualMachineInstanceMigrations for rhel9-test-vm
+      kubernetes.core.k8s_info:
+        kubeconfig: "{{ k8s_kubeconfig }}"
+        validate_certs: false
+        api_version: kubevirt.io/v1
+        kind: VirtualMachineInstanceMigration
+        namespace: "{{ vm_namespace }}"
+        label_selectors:
+          - "kubevirt.io/vmi-name={{ vm_name }}"
+      register: r_vmim_list
+      ignore_errors: true
+
+    # -------------------------------------------------------
+    # Check 3 — VMI nodeName is populated (compute node assigned)
+    # -------------------------------------------------------
+    - name: Resolve VMI nodeName from current VMI status
+      ansible.builtin.set_fact:
+        vmi_node_name: >-
+          {{ (r_vmi.resources | first).status.nodeName | default('')
+             if r_vmi.resources | default([]) | length > 0 else '' }}
+      ignore_errors: true
+
+    # -------------------------------------------------------
+    # Check 4 — Rootdisk PVC storageClassName != src_sc (storage migration done)
+    # Resolve PVC name from VM spec, checking both persistentVolumeClaim.claimName
+    # (post-migration) and dataVolume.name (original DataVolume-backed PVC).
+    # -------------------------------------------------------
+    - name: Get VirtualMachine spec to resolve current rootdisk PVC name
+      kubernetes.core.k8s_info:
+        kubeconfig: "{{ k8s_kubeconfig }}"
+        validate_certs: false
+        api_version: kubevirt.io/v1
+        kind: VirtualMachine
+        name: "{{ vm_name }}"
+        namespace: "{{ vm_namespace }}"
+      register: r_vm
+      ignore_errors: true
+
+    - name: Resolve rootdisk volume entry from VM spec
+      ansible.builtin.set_fact:
+        _rootdisk_vol: >-
+          {{ ((r_vm.resources | first).spec.template.spec.volumes | default([])
+              | selectattr('name', 'equalto', 'rootdisk')
+              | list | first) | default({}) }}
+      when: r_vm.resources | default([]) | length > 0
+      ignore_errors: true
+
+    - name: Resolve rootdisk PVC name (persistentVolumeClaim or dataVolume reference)
+      ansible.builtin.set_fact:
+        rootdisk_pvc_name: >-
+          {{ _rootdisk_vol.persistentVolumeClaim.claimName
+             if _rootdisk_vol.persistentVolumeClaim is defined
+             else (_rootdisk_vol.dataVolume.name
+                   if _rootdisk_vol.dataVolume is defined
+                   else vm_name) }}
+      when: _rootdisk_vol is defined
+      ignore_errors: true
+
+    - name: Get rootdisk PVC using resolved name
+      kubernetes.core.k8s_info:
+        kubeconfig: "{{ k8s_kubeconfig }}"
+        validate_certs: false
+        api_version: v1
+        kind: PersistentVolumeClaim
+        name: "{{ rootdisk_pvc_name | default(vm_name) }}"
+        namespace: "{{ vm_namespace }}"
+      register: r_pvc
+      ignore_errors: true
+
+    # -------------------------------------------------------
+    # Build result facts
+    # -------------------------------------------------------
+    - name: Build task result facts
+      ansible.builtin.set_fact:
+        _t1_vmi_ok: >-
+          {{ r_vmi.resources | default([]) | length > 0
+             and (r_vmi.resources | first).status.phase | default('') == 'Running' }}
+        _t2_vmim_ok: >-
+          {{ r_vmim_list.resources | default([])
+             | selectattr('status.phase', 'defined')
+             | selectattr('status.phase', 'equalto', 'Succeeded')
+             | list | length > 0 }}
+        _t3_node_ok: >-
+          {{ vmi_node_name | default('') | length > 0 }}
+        _t4_pvc_sc_ok: >-
+          {{ r_pvc.resources | default([]) | length > 0
+             and (r_pvc.resources | first).spec.storageClassName | default('') == dst_sc }}
+
+    # -------------------------------------------------------
+    # Final validation gate
+    # -------------------------------------------------------
+    - name: Validate all module 3 tasks
+      validation_check:
+        check: >-
+          {{ _t1_vmi_ok and _t2_vmim_ok and _t3_node_ok and _t4_pvc_sc_ok }}
+        pass_msg: |
+          Task 1: VMI rhel9-test-vm is Running in namespace default
+          Task 2: A VirtualMachineInstanceMigration for rhel9-test-vm reached phase Succeeded
+          Task 3: VMI nodeName is populated (compute node assigned after migration)
+          Task 4: Rootdisk PVC storageClassName == ocs-storagecluster-ceph-rbd (storage migration complete)
+        error_msg: |
+          {{ '[OK]' if _t1_vmi_ok else '[FAIL]' }} Task 1: VMI rhel9-test-vm {{ 'is Running' if _t1_vmi_ok else 'NOT Running in namespace default -- ensure the VM is started and healthy' }}
+          {{ '[OK]' if _t2_vmim_ok else '[FAIL]' }} Task 2: Compute migration {{ 'completed (VMIM Succeeded)' if _t2_vmim_ok else 'NOT found as Succeeded -- complete Exercise 1 by creating a VirtualMachineInstanceMigration for rhel9-test-vm' }}
+          {{ '[OK]' if _t3_node_ok else '[FAIL]' }} Task 3: VMI nodeName {{ 'is populated (' + vmi_node_name + ')' if _t3_node_ok else 'is empty -- the VM may not have a running VMI; ensure the VM is Running' }}
+          {{ '[OK]' if _t4_pvc_sc_ok else '[FAIL]' }} Task 4: Rootdisk PVC ({{ rootdisk_pvc_name | default(vm_name) }}) storageClassName {{ '== ocs-storagecluster-ceph-rbd' if _t4_pvc_sc_ok else 'NOT on ocs-storagecluster-ceph-rbd -- complete Exercise 2 by migrating storage using the KubeVirt storage live migration UI (Overview > Migration > Storage)' }}

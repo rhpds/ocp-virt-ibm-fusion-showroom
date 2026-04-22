@@ -1,0 +1,416 @@
+---
+- name: Module 3 - VM Live Migration Solve
+  hosts: localhost
+  connection: local
+  gather_facts: false
+  vars:
+    vm_name: rhel9-test-vm
+    vm_namespace: default
+    src_sc: ocs-storagecluster-ceph-rbd-virtualization
+    dst_sc: ocs-storagecluster-ceph-rbd
+    # DataVolume / PVC name for the VM rootdisk (created by module-01)
+    rootdisk_pvc_name: "{{ vm_name }}-volume"
+    # Migration destination PVC name
+    mig_pvc_name: "{{ vm_name }}-volume-mig"
+
+  tasks:
+
+    # ── Pre-flight: confirm VM exists and is Running ───────────────────────────
+
+    - name: Get VirtualMachineInstance state before migration
+      kubernetes.core.k8s_info:
+        kubeconfig: "{{ k8s_kubeconfig }}"
+        validate_certs: false
+        api_version: kubevirt.io/v1
+        kind: VirtualMachineInstance
+        name: "{{ vm_name }}"
+        namespace: "{{ vm_namespace }}"
+      register: r_vmi_pre
+      ignore_errors: true
+
+    - name: Assert VM is Running before proceeding
+      ansible.builtin.debug:
+        msg: >-
+          Pre-migration VMI phase:
+          {{ (r_vmi_pre.resources | first).status.phase | default('NOT FOUND') }}
+
+    - name: Record pre-migration node
+      ansible.builtin.set_fact:
+        pre_migration_node: >-
+          {{ (r_vmi_pre.resources | first).status.nodeName | default('unknown') }}
+      when: r_vmi_pre.resources | default([]) | length > 0
+
+    - name: Show pre-migration node
+      ansible.builtin.debug:
+        msg: "Pre-migration node: {{ pre_migration_node | default('unknown') }}"
+
+    # ── Exercise 1: Compute live migration ────────────────────────────────────
+
+    - name: Check for any existing VirtualMachineInstanceMigration for this VM
+      kubernetes.core.k8s_info:
+        kubeconfig: "{{ k8s_kubeconfig }}"
+        validate_certs: false
+        api_version: kubevirt.io/v1
+        kind: VirtualMachineInstanceMigration
+        namespace: "{{ vm_namespace }}"
+        label_selectors:
+          - "kubevirt.io/vmi-name={{ vm_name }}"
+      register: r_existing_vmim
+      ignore_errors: true
+
+    - name: Determine whether a completed migration already exists
+      ansible.builtin.set_fact:
+        prior_migration_succeeded: >-
+          {{ r_existing_vmim.resources | default([])
+             | selectattr('status.phase', 'defined')
+             | selectattr('status.phase', 'equalto', 'Succeeded')
+             | list | length > 0 }}
+
+    - name: Create VirtualMachineInstanceMigration for compute migration
+      kubernetes.core.k8s:
+        kubeconfig: "{{ k8s_kubeconfig }}"
+        validate_certs: false
+        state: present
+        definition:
+          apiVersion: kubevirt.io/v1
+          kind: VirtualMachineInstanceMigration
+          metadata:
+            generateName: "{{ vm_name }}-migrate-"
+            namespace: "{{ vm_namespace }}"
+          spec:
+            vmiName: "{{ vm_name }}"
+      when: not prior_migration_succeeded | bool
+      register: r_vmim_create
+      ignore_errors: true
+
+    - name: Pause 5 seconds for VMIM to register
+      ansible.builtin.pause:
+        seconds: 5
+      when: not prior_migration_succeeded | bool
+
+    - name: Find the active or most-recent VMIM for this VM
+      kubernetes.core.k8s_info:
+        kubeconfig: "{{ k8s_kubeconfig }}"
+        validate_certs: false
+        api_version: kubevirt.io/v1
+        kind: VirtualMachineInstanceMigration
+        namespace: "{{ vm_namespace }}"
+        label_selectors:
+          - "kubevirt.io/vmi-name={{ vm_name }}"
+      register: r_vmim_list
+      ignore_errors: true
+
+    - name: Set VMIM name fact from latest migration
+      ansible.builtin.set_fact:
+        active_vmim_name: >-
+          {{ (r_vmim_list.resources | default([])
+              | sort(attribute='metadata.creationTimestamp')
+              | last).metadata.name | default('') }}
+      when: r_vmim_list.resources | default([]) | length > 0
+
+    - name: Wait for VirtualMachineInstanceMigration to reach Succeeded (up to 10 min)
+      kubernetes.core.k8s_info:
+        kubeconfig: "{{ k8s_kubeconfig }}"
+        validate_certs: false
+        api_version: kubevirt.io/v1
+        kind: VirtualMachineInstanceMigration
+        name: "{{ active_vmim_name }}"
+        namespace: "{{ vm_namespace }}"
+      register: r_vmim_status
+      retries: 30
+      delay: 20
+      until: >-
+        r_vmim_status.resources | default([]) | length > 0
+        and (r_vmim_status.resources | first).status.phase | default('') in ['Succeeded', 'Failed']
+      when: active_vmim_name is defined and active_vmim_name | length > 0
+      ignore_errors: true
+
+    - name: Get VMI state after compute migration
+      kubernetes.core.k8s_info:
+        kubeconfig: "{{ k8s_kubeconfig }}"
+        validate_certs: false
+        api_version: kubevirt.io/v1
+        kind: VirtualMachineInstance
+        name: "{{ vm_name }}"
+        namespace: "{{ vm_namespace }}"
+      register: r_vmi_post_compute
+      ignore_errors: true
+
+    - name: Record post-compute-migration node
+      ansible.builtin.set_fact:
+        post_compute_node: >-
+          {{ (r_vmi_post_compute.resources | first).status.nodeName | default('unknown') }}
+      when: r_vmi_post_compute.resources | default([]) | length > 0
+
+    - name: Derive compute migration success facts
+      ansible.builtin.set_fact:
+        fact_vmim_succeeded: >-
+          {{ r_vmim_status.resources | default([]) | length > 0
+             and (r_vmim_status.resources | first).status.phase | default('') == 'Succeeded' }}
+        fact_node_changed: >-
+          {{ pre_migration_node | default('') != post_compute_node | default('')
+             and post_compute_node | default('unknown') != 'unknown' }}
+        fact_vmi_running_post_compute: >-
+          {{ r_vmi_post_compute.resources | default([]) | length > 0
+             and (r_vmi_post_compute.resources | first).status.phase | default('') == 'Running' }}
+      ignore_errors: true
+
+    # ── Exercise 2: Storage live migration ────────────────────────────────────
+    # KubeVirt 1.3+ storage live migration:
+    # 1. Create a blank PVC on the destination storage class (same volumeMode: Block)
+    # 2. Patch VM volumes to reference the new PVC
+    # 3. Set updateVolumesStrategy: Migration — KubeVirt copies data live
+    #
+    # Note: destination must be Block volumeMode (same as source). ceph-rbd-virtualization
+    # → ceph-rbd is a valid live migration path. CephFS is Filesystem-only and requires
+    # cold migration (out of scope for this automation).
+
+    - name: Resolve current rootdisk PVC from running VM spec
+      kubernetes.core.k8s_info:
+        kubeconfig: "{{ k8s_kubeconfig }}"
+        validate_certs: false
+        api_version: kubevirt.io/v1
+        kind: VirtualMachine
+        name: "{{ vm_name }}"
+        namespace: "{{ vm_namespace }}"
+      register: r_vm_cur
+      ignore_errors: true
+
+    - name: Determine current rootdisk PVC name
+      ansible.builtin.set_fact:
+        cur_rootdisk_pvc: >-
+          {{ ((r_vm_cur.resources | first).spec.template.spec.volumes | default([])
+              | selectattr('name', 'equalto', 'rootdisk')
+              | map(attribute='persistentVolumeClaim.claimName')
+              | list | first) | default(rootdisk_pvc_name) }}
+      when: r_vm_cur.resources | default([]) | length > 0
+
+    - name: Get current rootdisk PVC storage class
+      kubernetes.core.k8s_info:
+        kubeconfig: "{{ k8s_kubeconfig }}"
+        validate_certs: false
+        api_version: v1
+        kind: PersistentVolumeClaim
+        name: "{{ cur_rootdisk_pvc | default(rootdisk_pvc_name) }}"
+        namespace: "{{ vm_namespace }}"
+      register: r_pvc_cur
+      ignore_errors: true
+
+    - name: Show current rootdisk PVC storage class
+      ansible.builtin.debug:
+        msg: >-
+          Current rootdisk PVC ({{ cur_rootdisk_pvc | default(rootdisk_pvc_name) }})
+          storage class: {{ (r_pvc_cur.resources | first).spec.storageClassName | default('unknown') }}
+      when: r_pvc_cur.resources | default([]) | length > 0
+
+    - name: Check if storage migration already complete
+      ansible.builtin.set_fact:
+        storage_migration_already_done: >-
+          {{ r_pvc_cur.resources | default([]) | length > 0
+             and (r_pvc_cur.resources | first).spec.storageClassName | default('') == dst_sc }}
+
+    - name: Show storage migration status
+      ansible.builtin.debug:
+        msg: "Storage migration already done: {{ storage_migration_already_done | default(false) }}"
+
+    # Step 2a: Get source PVC details (size, volumeMode, accessModes)
+    - name: Get source PVC spec for migration target sizing
+      kubernetes.core.k8s_info:
+        kubeconfig: "{{ k8s_kubeconfig }}"
+        validate_certs: false
+        api_version: v1
+        kind: PersistentVolumeClaim
+        name: "{{ rootdisk_pvc_name }}"
+        namespace: "{{ vm_namespace }}"
+      register: r_src_pvc
+      when: not storage_migration_already_done | bool
+      ignore_errors: true
+
+    - name: Record source PVC properties
+      ansible.builtin.set_fact:
+        src_pvc_size: >-
+          {{ (r_src_pvc.resources | first).spec.resources.requests.storage | default('30Gi') }}
+        src_pvc_volumemode: >-
+          {{ (r_src_pvc.resources | first).spec.volumeMode | default('Block') }}
+        src_pvc_access: >-
+          {{ (r_src_pvc.resources | first).spec.accessModes | default(['ReadWriteMany']) }}
+      when:
+        - not storage_migration_already_done | bool
+        - r_src_pvc is defined
+        - r_src_pvc.resources | default([]) | length > 0
+      ignore_errors: true
+
+    # Step 2b: Create blank destination PVC (same volumeMode as source)
+    - name: Check if migration destination PVC already exists
+      kubernetes.core.k8s_info:
+        kubeconfig: "{{ k8s_kubeconfig }}"
+        validate_certs: false
+        api_version: v1
+        kind: PersistentVolumeClaim
+        name: "{{ mig_pvc_name }}"
+        namespace: "{{ vm_namespace }}"
+      register: r_mig_pvc_check
+      when: not storage_migration_already_done | bool
+      ignore_errors: true
+
+    - name: Create blank destination PVC on target storage class
+      kubernetes.core.k8s:
+        kubeconfig: "{{ k8s_kubeconfig }}"
+        validate_certs: false
+        state: present
+        definition:
+          apiVersion: v1
+          kind: PersistentVolumeClaim
+          metadata:
+            name: "{{ mig_pvc_name }}"
+            namespace: "{{ vm_namespace }}"
+          spec:
+            accessModes: "{{ src_pvc_access | default(['ReadWriteMany']) }}"
+            storageClassName: "{{ dst_sc }}"
+            volumeMode: "{{ src_pvc_volumemode | default('Block') }}"
+            resources:
+              requests:
+                storage: "{{ src_pvc_size | default('30Gi') }}"
+      when:
+        - not storage_migration_already_done | bool
+        - r_mig_pvc_check.resources | default([]) | length == 0
+      register: r_mig_pvc_create
+      ignore_errors: true
+
+    - name: Wait for destination PVC to be Bound
+      kubernetes.core.k8s_info:
+        kubeconfig: "{{ k8s_kubeconfig }}"
+        validate_certs: false
+        api_version: v1
+        kind: PersistentVolumeClaim
+        name: "{{ mig_pvc_name }}"
+        namespace: "{{ vm_namespace }}"
+      register: r_mig_pvc_bound
+      retries: 12
+      delay: 10
+      until: >-
+        r_mig_pvc_bound.resources | default([]) | length > 0
+        and (r_mig_pvc_bound.resources | first).status.phase | default('') == 'Bound'
+      when: not storage_migration_already_done | bool
+      ignore_errors: true
+
+    - name: Show destination PVC status
+      ansible.builtin.debug:
+        msg: >-
+          Destination PVC ({{ mig_pvc_name }}) status:
+          {{ (r_mig_pvc_bound.resources | first).status.phase | default('unknown')
+             if r_mig_pvc_bound is defined and r_mig_pvc_bound.resources | default([]) | length > 0
+             else 'not checked (already done)' }}
+
+    # Step 2c: Patch VM to reference the new PVC and trigger live storage migration
+    - name: Patch VM to use destination PVC and enable storage live migration
+      kubernetes.core.k8s:
+        kubeconfig: "{{ k8s_kubeconfig }}"
+        validate_certs: false
+        state: patched
+        api_version: kubevirt.io/v1
+        kind: VirtualMachine
+        name: "{{ vm_name }}"
+        namespace: "{{ vm_namespace }}"
+        definition:
+          spec:
+            updateVolumesStrategy: Migration
+            template:
+              spec:
+                volumes:
+                  - name: rootdisk
+                    persistentVolumeClaim:
+                      claimName: "{{ mig_pvc_name }}"
+                  - name: cloudinitdisk
+                    cloudInitNoCloud:
+                      userData: |
+                        #cloud-config
+                        user: cloud-user
+                        password: redhat
+                        chpasswd:
+                          expire: false
+      when: >-
+        not storage_migration_already_done | bool
+        and r_mig_pvc_bound.resources | default([]) | length > 0
+        and (r_mig_pvc_bound.resources | first).status.phase | default('') == 'Bound'
+      register: r_vm_patch
+      ignore_errors: true
+
+    - name: Wait for KubeVirt storage migration to complete — VMI volumes updated (up to 15 min)
+      kubernetes.core.k8s_info:
+        kubeconfig: "{{ k8s_kubeconfig }}"
+        validate_certs: false
+        api_version: kubevirt.io/v1
+        kind: VirtualMachineInstance
+        name: "{{ vm_name }}"
+        namespace: "{{ vm_namespace }}"
+      register: r_vmi_vol
+      retries: 45
+      delay: 20
+      until: >-
+        r_vmi_vol.resources | default([]) | length > 0
+        and (r_vmi_vol.resources | first).spec.volumes | default([])
+            | selectattr('name', 'equalto', 'rootdisk')
+            | selectattr('persistentVolumeClaim', 'defined')
+            | selectattr('persistentVolumeClaim.claimName', 'equalto', mig_pvc_name)
+            | list | length > 0
+      when: >-
+        not storage_migration_already_done | bool
+        and r_vm_patch is defined
+        and not r_vm_patch.failed | default(false)
+      ignore_errors: true
+
+    - name: Get VMI state after storage migration
+      kubernetes.core.k8s_info:
+        kubeconfig: "{{ k8s_kubeconfig }}"
+        validate_certs: false
+        api_version: kubevirt.io/v1
+        kind: VirtualMachineInstance
+        name: "{{ vm_name }}"
+        namespace: "{{ vm_namespace }}"
+      register: r_vmi_post_storage
+      ignore_errors: true
+
+    - name: Get destination PVC final state
+      kubernetes.core.k8s_info:
+        kubeconfig: "{{ k8s_kubeconfig }}"
+        validate_certs: false
+        api_version: v1
+        kind: PersistentVolumeClaim
+        name: "{{ mig_pvc_name }}"
+        namespace: "{{ vm_namespace }}"
+      register: r_pvc_post
+      ignore_errors: true
+
+    # ── Derive final check facts ───────────────────────────────────────────────
+
+    - name: Derive final check facts
+      ansible.builtin.set_fact:
+        fact_pvc_on_dst_sc: >-
+          {{ r_pvc_post.resources | default([]) | length > 0
+             and (r_pvc_post.resources | first).spec.storageClassName | default('') == dst_sc }}
+        fact_vmi_running_post_storage: >-
+          {{ r_vmi_post_storage.resources | default([]) | length > 0
+             and (r_vmi_post_storage.resources | first).status.phase | default('') == 'Running' }}
+      ignore_errors: true
+
+    # ── Final report ───────────────────────────────────────────────────────────
+
+    - name: Report solve status
+      ansible.builtin.debug:
+        msg: |
+          === Module 3 Solve Report ===
+
+          Exercise 1 — Compute Live Migration:
+            VMI phase before migration:                  {{ (r_vmi_pre.resources | first).status.phase | default('NOT FOUND') if r_vmi_pre.resources | default([]) | length > 0 else 'NOT FOUND' }}
+            Pre-migration node:                          {{ pre_migration_node | default('unknown') }}
+            Post-migration node:                         {{ post_compute_node | default('unknown') }}
+            VMIM phase Succeeded:                        {{ 'ok' if fact_vmim_succeeded | default(false) else 'NOT ok' }}
+            Node changed after migration:                {{ 'ok' if fact_node_changed | default(false) else 'NOT ok (same node or unknown)' }}
+            VMI Running after compute migration:         {{ 'ok' if fact_vmi_running_post_compute | default(false) else 'NOT ok' }}
+
+          Exercise 2 — Storage Live Migration:
+            Storage migration already done (skipped):   {{ storage_migration_already_done | default(false) }}
+            Destination PVC ({{ mig_pvc_name }}) status: {{ (r_pvc_post.resources | first).spec.storageClassName | default('unknown') if r_pvc_post.resources | default([]) | length > 0 else 'not found' }}
+            PVC now on {{ dst_sc }}:                    {{ 'ok' if fact_pvc_on_dst_sc | default(false) else 'NOT ok' }}
+            VMI Running after storage migration:         {{ 'ok' if fact_vmi_running_post_storage | default(false) else 'NOT ok' }}

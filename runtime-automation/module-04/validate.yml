@@ -1,0 +1,155 @@
+---
+- name: Module 4 - IBM Fusion Backup and Restore Validation
+  hosts: localhost
+  connection: local
+  gather_facts: false
+  vars:
+    filebrowser_ns: filebrowser
+    vmbackup_ns: vmbackup
+    pacman_ns: pacman
+    vm_name: rhel9-backup
+    fusion_ns: ibm-spectrum-fusion-ns
+    recipe_name: mongodb-image-based-backup-restore-recipe
+
+  tasks:
+
+    # ── Exercise 2: filebrowser app deployed ──────────────────────────────────
+
+    - name: Check filebrowser Deployment in filebrowser namespace
+      kubernetes.core.k8s_info:
+        kubeconfig: "{{ k8s_kubeconfig }}"
+        validate_certs: false
+        api_version: apps/v1
+        kind: Deployment
+        name: filebrowser
+        namespace: "{{ filebrowser_ns }}"
+      register: r_fb_deploy
+
+    - name: Check filebrowser Route exists
+      kubernetes.core.k8s_info:
+        kubeconfig: "{{ k8s_kubeconfig }}"
+        validate_certs: false
+        api_version: route.openshift.io/v1
+        kind: Route
+        name: filebrowser
+        namespace: "{{ filebrowser_ns }}"
+      register: r_fb_route
+
+    - name: "Validate: filebrowser Deployment is running"
+      validation_check:
+        pass_msg: >-
+          [PASS] The filebrowser application is deployed and running
+          in the '{{ filebrowser_ns }}' namespace.
+        error_msg: >-
+          [FAIL] The filebrowser Deployment is not running in the
+          '{{ filebrowser_ns }}' namespace. Deploy the filebrowser application
+          as described in Exercise 2.
+        check:
+          - r_fb_deploy.resources | default([]) | length > 0
+          - (r_fb_deploy.resources | first).status.availableReplicas | default(0) | int > 0
+
+    - name: "Validate: filebrowser Route exists"
+      validation_check:
+        pass_msg: >-
+          [PASS] The filebrowser Route exists in the '{{ filebrowser_ns }}'
+          namespace and the application is accessible.
+        error_msg: >-
+          [FAIL] The filebrowser Route does not exist in the
+          '{{ filebrowser_ns }}' namespace. Create the Route as part of
+          Exercise 2.
+        check:
+          - r_fb_route.resources | default([]) | length > 0
+
+    # ── Exercise 3: VM rhel9-backup in vmbackup namespace ─────────────────────
+
+    - name: Check VMI rhel9-backup in vmbackup namespace
+      kubernetes.core.k8s_info:
+        kubeconfig: "{{ k8s_kubeconfig }}"
+        validate_certs: false
+        api_version: kubevirt.io/v1
+        kind: VirtualMachineInstance
+        name: "{{ vm_name }}"
+        namespace: "{{ vmbackup_ns }}"
+      register: r_vmi_vmbackup
+
+    - name: "Validate: VM rhel9-backup is Running in vmbackup"
+      validation_check:
+        pass_msg: >-
+          [PASS] The virtual machine '{{ vm_name }}' is running in the
+          '{{ vmbackup_ns }}' namespace.
+        error_msg: >-
+          [FAIL] The virtual machine '{{ vm_name }}' is not running in the
+          '{{ vmbackup_ns }}' namespace. Create the VM as described in
+          Exercise 3. The VM may still be booting — wait a few minutes
+          and try again.
+        check:
+          - r_vmi_vmbackup.resources | default([]) | length > 0
+          - (r_vmi_vmbackup.resources | first).status.phase | default('') == 'Running'
+
+    # ── Exercise 4: PacMan + MongoDB deployed with Recipe ─────────────────────
+
+    - name: Check PacMan Deployment in pacman namespace
+      kubernetes.core.k8s_info:
+        kubeconfig: "{{ k8s_kubeconfig }}"
+        validate_certs: false
+        api_version: apps/v1
+        kind: Deployment
+        name: pacman
+        namespace: "{{ pacman_ns }}"
+      register: r_pacman_deploy
+
+    - name: Check MongoDB Deployment in pacman namespace
+      kubernetes.core.k8s_info:
+        kubeconfig: "{{ k8s_kubeconfig }}"
+        validate_certs: false
+        api_version: apps/v1
+        kind: Deployment
+        name: mongodb
+        namespace: "{{ pacman_ns }}"
+      register: r_mongo_deploy
+
+    - name: Check MongoDB Recipe exists
+      kubernetes.core.k8s_info:
+        kubeconfig: "{{ k8s_kubeconfig }}"
+        validate_certs: false
+        api_version: spp-data-protection.isf.ibm.com/v1alpha1
+        kind: Recipe
+        name: "{{ recipe_name }}"
+        namespace: "{{ fusion_ns }}"
+      register: r_recipe
+
+    - name: "Validate: PacMan application is running"
+      validation_check:
+        pass_msg: >-
+          [PASS] The PacMan application is deployed and running in the
+          '{{ pacman_ns }}' namespace.
+        error_msg: >-
+          [FAIL] The PacMan Deployment is not running in the
+          '{{ pacman_ns }}' namespace. Deploy the PacMan application
+          as described in Exercise 4.
+        check:
+          - r_pacman_deploy.resources | default([]) | length > 0
+          - (r_pacman_deploy.resources | first).status.availableReplicas | default(0) | int > 0
+
+    - name: "Validate: MongoDB is running"
+      validation_check:
+        pass_msg: >-
+          [PASS] MongoDB is deployed and running in the '{{ pacman_ns }}'
+          namespace.
+        error_msg: >-
+          [FAIL] The MongoDB Deployment is not running in the
+          '{{ pacman_ns }}' namespace. Deploy MongoDB as part of Exercise 4.
+        check:
+          - r_mongo_deploy.resources | default([]) | length > 0
+          - (r_mongo_deploy.resources | first).status.availableReplicas | default(0) | int > 0
+
+    - name: "Validate: MongoDB backup Recipe exists"
+      validation_check:
+        pass_msg: >-
+          [PASS] The MongoDB backup/restore Recipe
+          '{{ recipe_name }}' exists in '{{ fusion_ns }}'.
+        error_msg: >-
+          [FAIL] The MongoDB Recipe '{{ recipe_name }}' does not exist in
+          '{{ fusion_ns }}'. Create the Recipe as described in Exercise 4.
+        check:
+          - r_recipe.resources | default([]) | length > 0

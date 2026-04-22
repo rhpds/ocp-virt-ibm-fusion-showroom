@@ -121,6 +121,13 @@ Confirm the following in the IBM Fusion Backup & Restore console:
 * The backup location shows as **Connected**
 * Both the `daily-snapshot` and `weekly-backup` policies are listed in the Policies summary
 
+++++
+<div class="solve-button-placeholder" data-module="module-04"></div>
+++++
+++++
+<div class="validate-button-placeholder" data-module="module-04"></div>
+++++
+
 [[exercise-2]]
 == Exercise 2: Backup and Restore an Application 
 
@@ -510,6 +517,13 @@ image::06-module-04-bnr-application.png[Restoring Application,link=self,window=b
 * The restored filebrowser application in the `filebrowser2` project is accessible via its route
 * The files and directories you uploaded earlier are present in the restored application
 
+++++
+<div class="solve-button-placeholder" data-module="module-04"></div>
+++++
+++++
+<div class="validate-button-placeholder" data-module="module-04"></div>
+++++
+
 [[exercise-3]]
 == Exercise 3: Backup and Restore Virtual Machines
 
@@ -587,6 +601,13 @@ image::06-module-04-bnr-vm-list-restored.png[List Restored VM,link=self,window=b
 
 * The virtual machine `rhel9-backup` is in **Running** status in the `vmrestore` project
 * The VM was restored to a new namespace successfully
+
+++++
+<div class="solve-button-placeholder" data-module="module-04"></div>
+++++
+++++
+<div class="validate-button-placeholder" data-module="module-04"></div>
+++++
 
 [[exercise-4]]
 == Exercise 4: Backup and Restore an Application with a recipe
@@ -858,6 +879,13 @@ image::06-module-04-bnr-mongo-logs2.png[Mongo Logs,link=self,window=blank,width=
 * The backup job for the `pacman` application completed successfully with the recipe hooks
 * The MongoDB logs show `fsyncLock` and `fsyncUnlock` commands, confirming application-consistent backup
 
+++++
+<div class="solve-button-placeholder" data-module="module-04"></div>
+++++
+++++
+<div class="validate-button-placeholder" data-module="module-04"></div>
+++++
+
 [[exercise-5]]
 == Exercise 5: Backup Service Protection
 
@@ -909,6 +937,13 @@ image::06-module-04-bnr-service-enable.png[Service Protection Enable,link=self,w
 
 * The Backup & Restore service protection is enabled
 * A service backup schedule is configured with the weekly policy
+
+++++
+<div class="solve-button-placeholder" data-module="module-04"></div>
+++++
+++++
+<div class="validate-button-placeholder" data-module="module-04"></div>
+++++
 
 == Module summary
 You have successfully explored the IBM Fusion Backup and Restore Service.
