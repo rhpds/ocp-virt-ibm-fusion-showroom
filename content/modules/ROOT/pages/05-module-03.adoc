@@ -69,8 +69,14 @@ image::06-module-03-vm-migration-node.png[Virtual Machine Migration Node,link=se
 
 The status of the VM will change from `running` to `migrating` but can be quick so it might flash very briefly from `running` to `migrating` and back to `running`
 
-Once it is complete, check the `node` the VM is running on. It should be the node you selected. 
+Once it is complete, check the `node` the VM is running on. It should be the node you selected.
 
+++++
+<div class="solve-button-placeholder" data-module="module-03"></div>
+++++
+++++
+<div class="validate-button-placeholder" data-module="module-03"></div>
+++++
 
 [[exercise-2]]
 == Exercise 2: VM live storage migration
@@ -120,6 +126,13 @@ image::06-module-03-vm-storage-migration-done.png[Virtual Machine Storage Migrat
 Navigate back to `configuration`, `storage` and verify the storage change:
 
 image::06-module-03-vm-storage-migration-varify.png[Virtual Machine Storage Migration Varify,link=self,window=blank,width=700,title="Virtual Machine Storage Migration Varify"]
+
+++++
+<div class="solve-button-placeholder" data-module="module-03"></div>
+++++
+++++
+<div class="validate-button-placeholder" data-module="module-03"></div>
+++++
 
 == Learning outcomes
 

@@ -1,0 +1,726 @@
+---
+- name: Module 4 - IBM Fusion Backup and Restore Solve
+  hosts: localhost
+  connection: local
+  gather_facts: false
+  vars:
+    filebrowser_ns: filebrowser
+    vmbackup_ns: vmbackup
+    pacman_ns: pacman
+    vm_name: rhel9-backup
+    virt_sc: ocs-storagecluster-ceph-rbd-virtualization
+    fusion_ns: ibm-spectrum-fusion-ns
+    recipe_name: mongodb-image-based-backup-restore-recipe
+    mongodb_image: icr.io/cpopen/fbr-mongo@sha256:e7b9b3e5f3e190a7b8bf588887847e538ddf4aaae80052605b19999827f5acf7
+
+  tasks:
+
+    # ═══════════════════════════════════════════════════════════════════════════
+    # EXERCISE 1: Create Backup Locations and Policies
+    # Requires IBM Fusion UI — cannot be automated via CRDs.
+    # The B&R microservices only pick up BSLs/policies created through
+    # the Fusion REST API, not from direct CR creation.
+    # ═══════════════════════════════════════════════════════════════════════════
+
+    - name: "Exercise 1 — SKIP (requires Fusion UI)"
+      ansible.builtin.debug:
+        msg: >-
+          Backup locations and policies must be created through the IBM Fusion
+          console. Direct CR creation is not picked up by the B&R service.
+
+    # ═══════════════════════════════════════════════════════════════════════════
+    # EXERCISE 2: Deploy filebrowser application
+    # ═══════════════════════════════════════════════════════════════════════════
+
+    - name: Ensure filebrowser namespace exists
+      kubernetes.core.k8s:
+        kubeconfig: "{{ k8s_kubeconfig }}"
+        validate_certs: false
+        state: present
+        definition:
+          apiVersion: v1
+          kind: Namespace
+          metadata:
+            name: "{{ filebrowser_ns }}"
+
+    - name: Create filebrowser PVC 'files' (10Gi ceph-rbd)
+      kubernetes.core.k8s:
+        kubeconfig: "{{ k8s_kubeconfig }}"
+        validate_certs: false
+        state: present
+        definition:
+          apiVersion: v1
+          kind: PersistentVolumeClaim
+          metadata:
+            name: files
+            namespace: "{{ filebrowser_ns }}"
+            labels:
+              app: filebrowser
+          spec:
+            storageClassName: ocs-storagecluster-ceph-rbd
+            accessModes:
+              - ReadWriteOnce
+            resources:
+              requests:
+                storage: 10Gi
+
+    - name: Create filebrowser PVC 'filebrowser-config' (1Gi ceph-rbd)
+      kubernetes.core.k8s:
+        kubeconfig: "{{ k8s_kubeconfig }}"
+        validate_certs: false
+        state: present
+        definition:
+          apiVersion: v1
+          kind: PersistentVolumeClaim
+          metadata:
+            name: filebrowser-config
+            namespace: "{{ filebrowser_ns }}"
+            labels:
+              app: filebrowser
+          spec:
+            storageClassName: ocs-storagecluster-ceph-rbd
+            accessModes:
+              - ReadWriteOnce
+            resources:
+              requests:
+                storage: 1Gi
+
+    - name: Create filebrowser ConfigMap my-filebrowser-config
+      kubernetes.core.k8s:
+        kubeconfig: "{{ k8s_kubeconfig }}"
+        validate_certs: false
+        state: present
+        definition:
+          apiVersion: v1
+          kind: ConfigMap
+          metadata:
+            name: my-filebrowser-config
+            namespace: "{{ filebrowser_ns }}"
+            labels:
+              app: filebrowser
+          data:
+            .filebrowser.json: |
+              {
+                "port": 8080,
+                "baseURL": "",
+                "address": "",
+                "log": "stdout",
+                "database": "/config/database.db",
+                "root": "/files"
+              }
+
+    - name: Create filebrowser Deployment
+      kubernetes.core.k8s:
+        kubeconfig: "{{ k8s_kubeconfig }}"
+        validate_certs: false
+        state: present
+        definition:
+          apiVersion: apps/v1
+          kind: Deployment
+          metadata:
+            name: filebrowser
+            namespace: "{{ filebrowser_ns }}"
+            labels:
+              app: filebrowser
+              deployment: filebrowser
+          spec:
+            replicas: 1
+            selector:
+              matchLabels:
+                app: filebrowser
+            template:
+              metadata:
+                labels:
+                  app: filebrowser
+                  app.kubernetes.io/component: filebrowser
+                  app.kubernetes.io/instance: filebrowser
+                  app.kubernetes.io/name: filebrowser
+                  app.kubernetes.io/part-of: filebrowser-app
+              spec:
+                containers:
+                  - name: filebrowser
+                    image: filebrowser/filebrowser:v2.18.0
+                    imagePullPolicy: IfNotPresent
+                    ports:
+                      - name: http
+                        containerPort: 8080
+                        protocol: TCP
+                    resources:
+                      requests:
+                        cpu: 100m
+                        memory: 128Mi
+                      limits:
+                        cpu: 500m
+                        memory: 512Mi
+                    env:
+                      - name: TZ
+                        value: UTC
+                    readinessProbe:
+                      httpGet:
+                        path: /health
+                        port: 8080
+                      initialDelaySeconds: 2
+                      periodSeconds: 5
+                    livenessProbe:
+                      httpGet:
+                        path: /health
+                        port: 8080
+                      initialDelaySeconds: 10
+                      periodSeconds: 10
+                    startupProbe:
+                      httpGet:
+                        path: /health
+                        port: 8080
+                      failureThreshold: 30
+                      periodSeconds: 10
+                    securityContext:
+                      runAsNonRoot: true
+                      allowPrivilegeEscalation: false
+                      capabilities:
+                        drop:
+                          - ALL
+                    volumeMounts:
+                      - name: config
+                        mountPath: /config
+                      - name: filebrowser-config
+                        mountPath: /.filebrowser.json
+                        subPath: .filebrowser.json
+                      - name: data
+                        mountPath: /files
+                volumes:
+                  - name: config
+                    persistentVolumeClaim:
+                      claimName: filebrowser-config
+                  - name: filebrowser-config
+                    configMap:
+                      name: my-filebrowser-config
+                      defaultMode: 420
+                  - name: data
+                    persistentVolumeClaim:
+                      claimName: files
+            strategy:
+              type: RollingUpdate
+              rollingUpdate:
+                maxUnavailable: 1
+                maxSurge: 1
+
+    - name: Create filebrowser Service
+      kubernetes.core.k8s:
+        kubeconfig: "{{ k8s_kubeconfig }}"
+        validate_certs: false
+        state: present
+        definition:
+          apiVersion: v1
+          kind: Service
+          metadata:
+            name: filebrowser
+            namespace: "{{ filebrowser_ns }}"
+            labels:
+              app: filebrowser
+          spec:
+            type: ClusterIP
+            ports:
+              - name: 8080-tcp
+                protocol: TCP
+                port: 8080
+                targetPort: 8080
+            selector:
+              app: filebrowser
+
+    - name: Create filebrowser Route
+      kubernetes.core.k8s:
+        kubeconfig: "{{ k8s_kubeconfig }}"
+        validate_certs: false
+        state: present
+        definition:
+          apiVersion: route.openshift.io/v1
+          kind: Route
+          metadata:
+            name: filebrowser
+            namespace: "{{ filebrowser_ns }}"
+            labels:
+              app: filebrowser
+            annotations:
+              openshift.io/host.generated: "true"
+          spec:
+            to:
+              kind: Service
+              name: filebrowser
+              weight: 100
+            port:
+              targetPort: 8080-tcp
+            tls:
+              termination: edge
+              insecureEdgeTerminationPolicy: Redirect
+
+    - name: Wait for filebrowser pod to be Running (up to 5 min)
+      kubernetes.core.k8s_info:
+        kubeconfig: "{{ k8s_kubeconfig }}"
+        validate_certs: false
+        api_version: v1
+        kind: Pod
+        namespace: "{{ filebrowser_ns }}"
+        label_selectors:
+          - "app=filebrowser"
+      register: r_fb_pod
+      retries: 30
+      delay: 10
+      until: >-
+        r_fb_pod.resources | default([]) | length > 0
+        and (r_fb_pod.resources
+        | selectattr('status.phase', 'equalto', 'Running')
+        | list | length > 0)
+
+    # ═══════════════════════════════════════════════════════════════════════════
+    # EXERCISE 3: Create VM for backup demo
+    # ═══════════════════════════════════════════════════════════════════════════
+
+    - name: Ensure vmbackup namespace exists
+      kubernetes.core.k8s:
+        kubeconfig: "{{ k8s_kubeconfig }}"
+        validate_certs: false
+        state: present
+        definition:
+          apiVersion: v1
+          kind: Namespace
+          metadata:
+            name: "{{ vmbackup_ns }}"
+
+    - name: Check if VM rhel9-backup already exists in vmbackup
+      kubernetes.core.k8s_info:
+        kubeconfig: "{{ k8s_kubeconfig }}"
+        validate_certs: false
+        api_version: kubevirt.io/v1
+        kind: VirtualMachine
+        name: "{{ vm_name }}"
+        namespace: "{{ vmbackup_ns }}"
+      register: r_vm_exists
+
+    - name: Create VirtualMachine rhel9-backup using instancetype (u1.small, rhel.9)
+      kubernetes.core.k8s:
+        kubeconfig: "{{ k8s_kubeconfig }}"
+        validate_certs: false
+        state: present
+        definition:
+          apiVersion: kubevirt.io/v1
+          kind: VirtualMachine
+          metadata:
+            name: "{{ vm_name }}"
+            namespace: "{{ vmbackup_ns }}"
+            labels:
+              app: "{{ vm_name }}"
+          spec:
+            instancetype:
+              kind: VirtualMachineClusterInstancetype
+              name: u1.small
+            preference:
+              kind: VirtualMachineClusterPreference
+              name: rhel.9
+            runStrategy: Always
+            template:
+              metadata:
+                labels:
+                  kubevirt.io/vm: "{{ vm_name }}"
+              spec:
+                domain:
+                  devices:
+                    disks:
+                      - name: rootdisk
+                        disk:
+                          bus: virtio
+                      - name: cloudinitdisk
+                        disk:
+                          bus: virtio
+                    interfaces:
+                      - name: default
+                        masquerade: {}
+                networks:
+                  - name: default
+                    pod: {}
+                volumes:
+                  - name: rootdisk
+                    dataVolume:
+                      name: "{{ vm_name }}-rootdisk"
+                  - name: cloudinitdisk
+                    cloudInitNoCloud:
+                      userData: |
+                        #cloud-config
+                        user: cloud-user
+                        password: redhat123
+                        chpasswd: { expire: False }
+            dataVolumeTemplates:
+              - metadata:
+                  name: "{{ vm_name }}-rootdisk"
+                spec:
+                  storage:
+                    accessModes:
+                      - ReadWriteMany
+                    resources:
+                      requests:
+                        storage: 30Gi
+                    storageClassName: "{{ virt_sc }}"
+                  sourceRef:
+                    kind: DataSource
+                    name: rhel9
+                    namespace: openshift-virtualization-os-images
+      when: r_vm_exists.resources | default([]) | length == 0
+
+    - name: Wait for VMI rhel9-backup to reach Running phase (up to 15 min)
+      kubernetes.core.k8s_info:
+        kubeconfig: "{{ k8s_kubeconfig }}"
+        validate_certs: false
+        api_version: kubevirt.io/v1
+        kind: VirtualMachineInstance
+        name: "{{ vm_name }}"
+        namespace: "{{ vmbackup_ns }}"
+      register: r_vmi_backup
+      retries: 45
+      delay: 20
+      until: >-
+        r_vmi_backup.resources | default([]) | length > 0
+        and (r_vmi_backup.resources | first).status.phase | default('') == 'Running'
+
+    # ═══════════════════════════════════════════════════════════════════════════
+    # EXERCISE 4: Deploy PacMan + MongoDB application
+    # ═══════════════════════════════════════════════════════════════════════════
+
+    - name: Ensure pacman namespace exists
+      kubernetes.core.k8s:
+        kubeconfig: "{{ k8s_kubeconfig }}"
+        validate_certs: false
+        state: present
+        definition:
+          apiVersion: v1
+          kind: Namespace
+          metadata:
+            name: "{{ pacman_ns }}"
+
+    - name: Check current MongoDB Deployment image
+      kubernetes.core.k8s_info:
+        kubeconfig: "{{ k8s_kubeconfig }}"
+        validate_certs: false
+        api_version: apps/v1
+        kind: Deployment
+        name: mongodb
+        namespace: "{{ pacman_ns }}"
+      register: r_mongo_deploy_existing
+
+    - name: Set fact — current MongoDB image
+      ansible.builtin.set_fact:
+        mongo_current_image: >-
+          {{
+            (r_mongo_deploy_existing.resources | first).spec.template.spec.containers
+            | selectattr('name', 'equalto', 'mongodb')
+            | map(attribute='image') | first
+            if r_mongo_deploy_existing.resources | default([]) | length > 0
+            else ''
+          }}
+
+    - name: Delete broken MongoDB Deployment if image is not the expected one
+      kubernetes.core.k8s:
+        kubeconfig: "{{ k8s_kubeconfig }}"
+        validate_certs: false
+        state: absent
+        definition:
+          apiVersion: apps/v1
+          kind: Deployment
+          metadata:
+            name: mongodb
+            namespace: "{{ pacman_ns }}"
+      when: >-
+        mongo_current_image | length > 0
+        and mongo_current_image != mongodb_image
+
+    - name: Delete stale MongoDB PVC if Deployment was using wrong image
+      kubernetes.core.k8s:
+        kubeconfig: "{{ k8s_kubeconfig }}"
+        validate_certs: false
+        state: absent
+        definition:
+          apiVersion: v1
+          kind: PersistentVolumeClaim
+          metadata:
+            name: mongo-storage
+            namespace: "{{ pacman_ns }}"
+      when: >-
+        mongo_current_image | length > 0
+        and mongo_current_image != mongodb_image
+
+    - name: Wait for stale MongoDB PVC to be deleted
+      kubernetes.core.k8s_info:
+        kubeconfig: "{{ k8s_kubeconfig }}"
+        validate_certs: false
+        api_version: v1
+        kind: PersistentVolumeClaim
+        name: mongo-storage
+        namespace: "{{ pacman_ns }}"
+      register: r_pvc_check
+      retries: 18
+      delay: 10
+      until: r_pvc_check.resources | default([]) | length == 0
+      when: >-
+        mongo_current_image | length > 0
+        and mongo_current_image != mongodb_image
+
+    - name: Create MongoDB PVC mongo-storage in pacman
+      kubernetes.core.k8s:
+        kubeconfig: "{{ k8s_kubeconfig }}"
+        validate_certs: false
+        state: present
+        definition:
+          apiVersion: v1
+          kind: PersistentVolumeClaim
+          metadata:
+            name: mongo-storage
+            namespace: "{{ pacman_ns }}"
+          spec:
+            storageClassName: ocs-storagecluster-ceph-rbd
+            accessModes:
+              - ReadWriteOnce
+            resources:
+              requests:
+                storage: 8Gi
+
+    - name: Create MongoDB Deployment in pacman
+      kubernetes.core.k8s:
+        kubeconfig: "{{ k8s_kubeconfig }}"
+        validate_certs: false
+        state: present
+        definition:
+          apiVersion: apps/v1
+          kind: Deployment
+          metadata:
+            name: mongodb
+            namespace: "{{ pacman_ns }}"
+            labels:
+              name: mongodb
+              app: mongodb
+          spec:
+            replicas: 1
+            selector:
+              matchLabels:
+                name: mongodb
+            template:
+              metadata:
+                labels:
+                  name: mongodb
+                  app: mongodb
+              spec:
+                containers:
+                  - name: mongodb
+                    image: "{{ mongodb_image }}"
+                    imagePullPolicy: IfNotPresent
+                    ports:
+                      - name: mongodb
+                        containerPort: 27017
+                    env:
+                      - name: ALLOW_EMPTY_PASSWORD
+                        value: "yes"
+                    volumeMounts:
+                      - name: mongo-db
+                        mountPath: /bitnami/mongodb
+                volumes:
+                  - name: mongo-db
+                    persistentVolumeClaim:
+                      claimName: mongo-storage
+
+    - name: Create MongoDB Service in pacman
+      kubernetes.core.k8s:
+        kubeconfig: "{{ k8s_kubeconfig }}"
+        validate_certs: false
+        state: present
+        definition:
+          apiVersion: v1
+          kind: Service
+          metadata:
+            name: mongo
+            namespace: "{{ pacman_ns }}"
+            labels:
+              name: mongodb
+          spec:
+            type: ClusterIP
+            ports:
+              - port: 27017
+                targetPort: 27017
+            selector:
+              name: mongodb
+
+    - name: Wait for MongoDB pod to be Running (up to 5 min)
+      kubernetes.core.k8s_info:
+        kubeconfig: "{{ k8s_kubeconfig }}"
+        validate_certs: false
+        api_version: v1
+        kind: Pod
+        namespace: "{{ pacman_ns }}"
+        label_selectors:
+          - "name=mongodb"
+      register: r_mongo_pod
+      retries: 30
+      delay: 10
+      until: >-
+        r_mongo_pod.resources | default([]) | length > 0
+        and (r_mongo_pod.resources
+        | selectattr('status.phase', 'equalto', 'Running')
+        | list | length > 0)
+
+    - name: Create PacMan Deployment in pacman
+      kubernetes.core.k8s:
+        kubeconfig: "{{ k8s_kubeconfig }}"
+        validate_certs: false
+        state: present
+        definition:
+          apiVersion: apps/v1
+          kind: Deployment
+          metadata:
+            name: pacman
+            namespace: "{{ pacman_ns }}"
+            labels:
+              name: pacman
+          spec:
+            replicas: 1
+            selector:
+              matchLabels:
+                name: pacman
+            template:
+              metadata:
+                labels:
+                  name: pacman
+              spec:
+                initContainers:
+                  - name: db-check
+                    image: busybox:latest
+                    command:
+                      - sh
+                      - -c
+                      - >-
+                        echo "Checking MongoDB"; while ! nc -z mongo 27017;
+                        do sleep 1; printf "-"; done; echo "MongoDB started"
+                containers:
+                  - name: pacman
+                    image: quay.io/jpacker/nodejs-pacman-app:latest
+                    ports:
+                      - containerPort: 8080
+                        name: http-server
+
+    - name: Create PacMan Service in pacman
+      kubernetes.core.k8s:
+        kubeconfig: "{{ k8s_kubeconfig }}"
+        validate_certs: false
+        state: present
+        definition:
+          apiVersion: v1
+          kind: Service
+          metadata:
+            name: pacman
+            namespace: "{{ pacman_ns }}"
+            labels:
+              name: pacman
+          spec:
+            type: ClusterIP
+            ports:
+              - port: 80
+                targetPort: 8080
+                protocol: TCP
+            selector:
+              name: pacman
+
+    - name: Create PacMan Route in pacman
+      kubernetes.core.k8s:
+        kubeconfig: "{{ k8s_kubeconfig }}"
+        validate_certs: false
+        state: present
+        definition:
+          apiVersion: route.openshift.io/v1
+          kind: Route
+          metadata:
+            name: pacman
+            namespace: "{{ pacman_ns }}"
+            labels:
+              app.kubernetes.io/name: pacman
+          spec:
+            path: "/"
+            to:
+              kind: Service
+              name: pacman
+            tls:
+              termination: edge
+              insecureEdgeTerminationPolicy: Redirect
+
+    - name: Wait for PacMan pod to be Running (up to 10 min)
+      kubernetes.core.k8s_info:
+        kubeconfig: "{{ k8s_kubeconfig }}"
+        validate_certs: false
+        api_version: v1
+        kind: Pod
+        namespace: "{{ pacman_ns }}"
+        label_selectors:
+          - "name=pacman"
+      register: r_pacman_pod
+      retries: 60
+      delay: 10
+      until: >-
+        r_pacman_pod.resources | default([]) | length > 0
+        and (r_pacman_pod.resources
+        | selectattr('status.phase', 'equalto', 'Running')
+        | list | length > 0)
+
+    - name: Create mongodb Recipe in ibm-spectrum-fusion-ns
+      kubernetes.core.k8s:
+        kubeconfig: "{{ k8s_kubeconfig }}"
+        validate_certs: false
+        state: present
+        definition:
+          apiVersion: spp-data-protection.isf.ibm.com/v1alpha1
+          kind: Recipe
+          metadata:
+            name: "{{ recipe_name }}"
+            namespace: "{{ fusion_ns }}"
+          spec:
+            appType: mongodb
+            groups:
+              - name: mongodb-volumes
+                type: volume
+                includedNamespaces:
+                  - "{{ pacman_ns }}"
+                labelSelector: "name=mongodb"
+              - name: mongodb-resources
+                type: resource
+                includedNamespaces:
+                  - "{{ pacman_ns }}"
+            hooks:
+              - name: mongodb-fsync
+                type: exec
+                namespace: "{{ pacman_ns }}"
+                labelSelector: "name=mongodb"
+                ops:
+                  - name: fsync-lock
+                    command: >-
+                      ["mongosh", "--eval", "db.fsyncLock()"]
+                    container: mongodb
+                    inverseOp: fsync-unlock
+                  - name: fsync-unlock
+                    command: >-
+                      ["mongosh", "--eval", "db.fsyncUnlock()"]
+                    container: mongodb
+            workflows:
+              - name: backup
+                sequence:
+                  - hook: mongodb-fsync/fsync-lock
+                  - group: mongodb-volumes
+                  - hook: mongodb-fsync/fsync-unlock
+                  - group: mongodb-resources
+              - name: restore
+                sequence:
+                  - group: mongodb-resources
+                  - group: mongodb-volumes
+
+    # ═══════════════════════════════════════════════════════════════════════════
+    # EXERCISE 5: Backup Service Protection
+    # Requires IBM Fusion UI — cannot be automated via CRDs.
+    # ═══════════════════════════════════════════════════════════════════════════
+
+    - name: "Exercise 5 — SKIP (requires Fusion UI)"
+      ansible.builtin.debug:
+        msg: >-
+          Service protection configuration must be done through the IBM Fusion
+          console.
