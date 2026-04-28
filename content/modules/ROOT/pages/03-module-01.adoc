@@ -22,18 +22,25 @@ By the end of this module, you will be able to:
 
 In this exercise, you will log in to the OpenShift web console and explore the Virtualization section to understand the management interface.
 
-. Open a web browser and navigate to the OpenShift console:
-+
-{openshift_console_url}
+* OpenShift console in a tab on your right or if you prefer in a separate window: {openshift_console_url}[window=blank].
 
-. Log in with the following credentials:
-+
-* **Username**: {admin_user}
-* **Password**: {admin_password}
+.Username
+[source,subs=attributes,role=execute]
+----
+{admin_user}
+----
+
+.Password
+[source,subs=attributes,role=execute]
+----
+{admin_password}
+----
 
 . After logging in, verify you are in the **Administrator** perspective by checking the dropdown in the upper-left corner of the console. If it shows **Developer**, switch it to **Administrator**.
 
 . In the left navigation menu, click on **Virtualization**. This opens the OpenShift Virtualization dashboard.
+
+. If you see the *Welcome to OpenShift Virtualization* screen, check the checkbox next to *Do not show this again* or simply close the window by clicking the `X`.
 
 . Explore the Virtualization overview page. You should see:
 +
@@ -89,16 +96,12 @@ kubevirt-hyperconverged   <age>
 * HyperConverged CR status shows as available
 * OpenShift Virtualization CSV phase is "Succeeded"
 
-++++
-<div class="validate-button-placeholder" data-module="module-01"></div>
-++++
-
 [[exercise-2]]
 == Exercise 2: Exploring IBM Fusion storage integration
 
 IBM Fusion provides enterprise-grade storage for your OpenShift cluster. In this exercise, you will examine the storage classes available and understand how they support VM workloads.
 
-. In the OpenShift console, navigate to **Storage** > **StorageClasses** in the left navigation menu.
+. In the *OpenShift console*, navigate to **Storage** > **StorageClasses** in the left navigation menu.
 
 . Identify the storage classes provided by IBM Fusion. Look for storage classes with `openshift-storage` in the provisioner name.
 +
@@ -106,7 +109,7 @@ NOTE: IBM Fusion storage classes provide features critical for VM workloads, inc
 +
 image::03-module-01-console-storageclasses.png[IBM Fusion Storage Classes,link=self,window=blank,width=700,title="Overview of IBM Fusion Storage Classes"]
 
-. In the OpenShift console, navigate to **Storage** > **Data Foundation** in the left navigation menu.
+. In the OpenShift console, switch to the *Administrator* perspective and navigate to **Storage** > **Data Foundation** in the left navigation menu.
 +
 image::03-module-01-console-datafoundation-overview.png[IBM Fusion Integration with Red Hat OpenShift Console,link=self,window=blank,width=700,title="Overview of IBM Fusion Data Foundation"]
 
@@ -250,24 +253,21 @@ Expected output from the two commands above show.
 * Two `volumesnapshotclass` are available in your cluster for `openshift-storage` drivers
 * The IBM Fusion Data Foundation cluster shows `PHASE` as `Ready`
 
-++++
-<div class="validate-button-placeholder" data-module="module-01"></div>
-++++
-
 [[exercise-3]]
 == Exercise 3: Explore IBM Fusion Backup and Restore Service
 
 Along with IBM Fusion enterprise-grade storage for your OpenShift cluster, it also provides backup and restore services for your virtual machines and applications.
 In this exercise, you will examine the backup and restore service and its configuration.
 
-. Open the IBM Fusion UI using the application selector at the top of the Red Hat OpenShift Web Console as illustrated below.
+. Switch to the IBM Fusion tab on the right:
++
+image::03-module-01-FusionUI-FromShowroomTab.png[Open the IBM Fusion UI Using Shopwroom Tab,link=self,window=blank,width=700,title="Switch to IBM Fusion Showroom Tab"]
++
+TIP: You can also open the IBM Fusion UI using the application selector at the top of the Red Hat OpenShift Web Console as illustrated below.
 +
 image::03-module-01-FusionUI-Selector.png[Open the IBM Fusion UI Web Console,link=self,window=blank,width=700,title="IBM Fusion Web Console Launch"]
 
-TIP: You can also use the Showroom Fusion tab to get access to the IBM Fusion UI as illustrated below.
-
-image::03-module-01-FusionUI-FromShowroomTab.png[Open the IBM Fusion UI Using Shopwroom Tab,link=self,window=blank,width=700,title="Switch to IBM Fusion Showroom Tab"]
-
+. Using single sign on you are already logged into the IBM Fusion Web Console as `{openshift_cluster_admin_username}`.
 . Once in the IBM Fusion Web Console click on the `Services` menu on the left hand side pane as illustrated below.
 +
 image::03-module-01-FusionUI-ServiceTab.png[Verify the IBM Fusion Servicdes deployed,link=self,window=blank,width=700,title="IBM Fusion Web Console Service Tab"]
@@ -306,12 +306,15 @@ This completes this part of the lab. The IBM Fusion Backup & Restore functionali
 
 Now that you understand the environment, it is time to create your first virtual machine using the OpenShift Virtualization console.
 
-. In the OpenShift console, navigate to **Virtualization** > **Catalog**. Select **Red Hat Enterprise Linux 9 VM** as illustrated below.
+. In the OpenShift console, navigate to **Virtualization** > **Catalog**.
+. For *Project* open the drop-down, click *Show default projects* and select the `default` project.
+. Select **Red Hat Enterprise Linux 9 VM** as illustrated below.
 +
 image::03-module-01-console-virtualization-createvm-1b.png[Create virtual machine,link=self,window=blank,width=700,title="Red Hat OpenShift Virtualization Catalog"]
 +
 TIP: The catalog can be customized post Red Hat OpenShift Virtualization deployment. Visit the **Templates** tab for existing predefined templates.
 
+. Scroll down and select a *U series small* instance type under *Select InstanceType*.
 . Scroll down and set the following numbered settings:
 +
 * **CPU and Memory**: Review the default allocation (typically 1 CPU, 2 GiB memory) (item `1`)
@@ -405,26 +408,3 @@ You have successfully explored the OpenShift Virtualization environment and crea
 **Next steps:**
 
 Module 2 will cover VM lifecycle management, including CPU and memory configuration, live migration, snapshots, and cloning using IBM Fusion storage.
-
-== Assets needed
-
-. `content/modules/ROOT/assets/images/03-module-01-console-virtualization-overview.png` - Screenshot of the OpenShift Virtualization overview dashboard
-. `content/modules/ROOT/assets/images/03-module-01-switch-to-bastion-tab.png` - Switching to the Bastion tab
-. `content/modules/ROOT/assets/images/03-module-01-refresh-bastion-tab.png` - Refreshing the Bastion tab
-. `content/modules/ROOT/assets/images/03-module-01-console-storageclasses.png` - IBM Fusion Storage classes
-. `content/modules/ROOT/assets/images/03-module-01-console-datafoundation-overview.png` - IBM Fusion Data Foundation Overview
-. `content/modules/ROOT/assets/images/03-module-01-console-datafoundation-storagecluster.png` - IBM Fusion storage cluster details
-. `content/modules/ROOT/assets/images/03-module-01-FusionUI-Selector.png` - Accessing IBM Fusion web console from OpenShift console
-. `content/modules/ROOT/assets/images/03-module-01-FusionUI-FromShowroomTab.png` - Accessing IBM Fusion web console from showroom tab
-. `content/modules/ROOT/assets/images/03-module-01-FusionUI-ServiceTab.png` - IBM Fusion Services tab
-. `content/modules/ROOT/assets/images/03-module-01-FusionUI-BnR-NewInstall-1.png` - IBM Fusion Backup and Restore Install Step 1
-. `content/modules/ROOT/assets/images/03-module-01-FusionUI-BnR-NewInstall-2.png` - IBM Fusion Backup and Restore Install Step 2
-. `content/modules/ROOT/assets/images/03-module-01-FusionUI-BnR-NewInstall-3.png` - IBM Fusion Backup and Restore Install Step 3
-. `content/modules/ROOT/assets/images/03-module-01-FusionUI-BnR-NewInstall-4.png` - IBM Fusion Backup and Restore Install Step 4
-. `content/modules/ROOT/assets/images/03-module-01-FusionUI-BnR-NewInstall-5.png` - IBM Fusion Backup and Restore Install Step 5
-. `content/modules/ROOT/assets/images/03-module-01-console-virtualization-createvm-1b.png` - Create virtual machine from VM catalog
-. `content/modules/ROOT/assets/images/03-module-01-console-virtualization-createvm-2b.png` - Customize virtual machine
-. `content/modules/ROOT/assets/images/03-module-01-console-virtualization-createvm-3b.png` - Wait for vm to enter Running state
-. `content/modules/ROOT/assets/images/03-module-01-console-virtualization-createvm-4b.png` - Access VM console
-
-

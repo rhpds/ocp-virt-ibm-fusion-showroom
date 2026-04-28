@@ -15,6 +15,6 @@ tabs:
   url: 'https://console-openshift-console.${DOMAIN}'
 - name: IBM Fusion
   url: 'https://console-ibm-spectrum-fusion-ns.${DOMAIN}'
-- name: Terminal
+- name: Bastion
   path: /wetty
   port: 443
