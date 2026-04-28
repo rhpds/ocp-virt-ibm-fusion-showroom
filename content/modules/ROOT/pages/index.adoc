@@ -40,9 +40,19 @@ This lab provides a fully configured environment with:
 
 You will have access to:
 
-* OpenShift console: {openshift_console_url}
-* Username: {admin_user}
-* Password: {admin_password}
+* OpenShift console in a tab on your right or if you prefer in a separate window: {openshift_console_url}[window=blank].
+
+.Username
+[source,subs=attributes,role=execute]
+----
+{admin_user}
+----
+
+.Password
+[source,subs=attributes,role=execute]
+----
+{admin_password}
+----
 
 NOTE: All environment details and credentials are available in the lab interface.
 
