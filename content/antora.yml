@@ -8,3 +8,4 @@ nav:
 asciidoc:
   attributes:
     lab_name: "lb2298-modernizing-virtualization-openshift-virtualization-ibm-fusion"
+    page-pagination: true

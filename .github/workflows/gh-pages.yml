@@ -21,13 +21,13 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
       - name: configure pages
-        uses: actions/configure-pages@v5
+        uses: actions/configure-pages@v6
       - name: setup node
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v6
         with:
-          node-version: 20.13.1
+          node-version: 22
       - name: install antora
         run: npm install --global @antora/cli@3.1 @antora/site-generator@3.1 @sntke/antora-mermaid-extension
       - name: patch antora-mermaid-extension
@@ -38,7 +38,7 @@ jobs:
       - name: antora generate
         run: antora generate site.yml --stacktrace
       - name: upload pages artifact
-        uses: actions/upload-pages-artifact@v3
+        uses: actions/upload-pages-artifact@v5
         with:
           path: www
   deploy:
@@ -50,4 +50,4 @@ jobs:
     steps:
     - name: deploy github pages
       id: deployment
-      uses: actions/deploy-pages@v4
+      uses: actions/deploy-pages@v5
