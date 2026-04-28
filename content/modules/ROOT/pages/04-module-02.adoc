@@ -576,13 +576,6 @@ In this exercise you have verified:
 * The number of DataVolumes for this VM is 1
 * You have verified the IP address assigned to the VM
 
-++++
-<div class="solve-button-placeholder" data-module="module-02"></div>
-++++
-++++
-<div class="validate-button-placeholder" data-module="module-02"></div>
-++++
-
 == Operating virtual machines
 
 === `virtctl` CLI
@@ -961,13 +954,6 @@ Expected output should show the following
 * The status of the `virt-launcher` when VM is stopped
 * A new VMI object is created upon a restart
 
-++++
-<div class="solve-button-placeholder" data-module="module-02"></div>
-++++
-++++
-<div class="validate-button-placeholder" data-module="module-02"></div>
-++++
-
 == Snapshots
 
 === VM snapshots
@@ -1208,13 +1194,6 @@ This is the WEB server before failure.
 Expected output should show the following
 
 * The webserver is operational
-
-++++
-<div class="solve-button-placeholder" data-module="module-02"></div>
-++++
-++++
-<div class="validate-button-placeholder" data-module="module-02"></div>
-++++
 
 == VM decommissioning and cleanup
 

@@ -301,13 +301,6 @@ Confirm that the IBM Fusion Backup & Restore service installation has started:
 
 This completes this part of the lab. The IBM Fusion Backup & Restore functionality will be configured and used in the optional **Module 4**.
 
-++++
-<div class="solve-button-placeholder" data-module="module-01"></div>
-++++
-++++
-<div class="validate-button-placeholder" data-module="module-01"></div>
-++++
-
 [[exercise-4]]
 == Exercise 4: Creating your first virtual machine
 
@@ -381,13 +374,6 @@ rhel9-test-vm-volume   Bound    pvc-<UUID>                                 30Gi 
 * VM status shows `Running`
 * A persistent volume claim exists for the VM boot disk
 * The PVC uses an IBM Fusion storage class
-
-++++
-<div class="solve-button-placeholder" data-module="module-01"></div>
-++++
-++++
-<div class="validate-button-placeholder" data-module="module-01"></div>
-++++
 
 == Learning outcomes
 
