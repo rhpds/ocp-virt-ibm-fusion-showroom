@@ -385,7 +385,7 @@ NAME              AGE     STATUS    READY
 rhel9-webserver   <age>   Running   True
 ----
 +
-TIP: Wait for status to be `Running` and readiness to be `True`
+TIP: Wait for status to be `Running` and readiness to be `True`. Then hit `Ctrl-C` to stop the watch.
 
 . Observe the VMI object that was created
 +
@@ -469,7 +469,7 @@ Password: redhat123
 +
 TIP: Hit <CR> to get to the login prompt. The VM username is `cloud-user` and the password `redhat123` as illustrated above.
 
-. Verify the VM deployment is complete
+. Verify the VM deployment is complete (repeat until you see the expected status)
 +
 [source,role="execute"]
 ----
@@ -848,7 +848,7 @@ Expected output:
 VM rhel9-webserver was scheduled to restart
 ----
 
-. Watch the VMI object recreate (old one deleted, new one appears)
+. Watch the VMI object recreate (old one deleted, new one appears). Hit `Ctrl-C` once you see the new VMI phase as `Running`.
 +
 [source,role="execute"]
 ----
@@ -863,11 +863,11 @@ rhel9-webserver   <age> Scheduling                    False
 rhel9-webserver   <age> Running   10.<x>.<y>.<z> ip-<nodename>.us-east-2.compute.internal   True
 ----
 
-. SSH through the API tunnel
+. Access the VM (use `cloud-user` and `redhat123` as the credentials)
 +
 [source,role="execute"]
 ----
-virtctl ssh -i ~/.ssh/id_rsa cloud-user@vm/rhel9-webserver -n vmlab-student
+virtctl console rhel9-webserver
 ----
 +
 Expected output:
@@ -887,9 +887,7 @@ using rhc at https://red.ht/registration
 Last login: Tue Mar 24 21:46:59 2026
 ----
 +
-NOTE: When done exit your ssh session using `exit` or `CTRL+d`.
-+
-TIP: Remember you injected your SSH key in the VM custom resource in the first exercise
+NOTE: When done exit your ssh session using `exit` or `CTRL+d`, then `Ctrl-5` to disconnect.
 
 === Verify
 
@@ -1032,7 +1030,6 @@ Expected output:
 VM rhel9-webserver was scheduled to stop
 ----
 
-
 . Snapshot the virtual machine
 +
 [source,role="execute"]
@@ -1086,11 +1083,17 @@ Expected output:
 VM rhel9-webserver was scheduled to start
 ----
 
+. Connect back to your VM (`cloud-user`, `redhat123`, `Ctrl-5` to disconnect)
++
+[source,role="execute"]
+----
+virtctl console rhel9-webserver
+----
+
 . Simulate failure
 +
 [source,role="execute"]
 ----
-virtctl ssh -i ~/.ssh/id_rsa cloud-user@vm/rhel9-webserver -n vmlab-student
 sudo systemctl stop httpd
 sudo dnf remove -y httpd
 ----
@@ -1100,6 +1103,11 @@ sudo dnf remove -y httpd
 [source,role="execute"]
 ----
 curl http://localhost
+----
++
+.Expected Output
+[source]
+----
 curl: (7) Failed to connect to localhost port 80: Connection refused
 ----
 +
@@ -1304,6 +1312,3 @@ You have successfully explored the OpenShift Virtualization lifecycle management
 **Next steps:**
 
 Module 3 will cover VM live migration.
-
-== Assets needed
-
