@@ -76,7 +76,7 @@ There you will find the correct route to use.
 
 === Backup Location
 
-Back on the *IBM Fusion* tab, navigate to the Locations screen by clicking on the Backup & restore (A) menu item shown in the left-hand side navigation pane and selecting the *Locations* (B) sub-item. When the Locations screen is shown, click the *Add location +* \(C\) button and use the wizard to provide the appropriate S3 endpoint information and credentials.
+Back on the *IBM Fusion* tab, navigate to the Locations screen by clicking on the Backup & restore (A) menu item shown in the left-hand side navigation pane and selecting the *Locations* (B) sub-item. When the Locations screen is shown, click the *Add location +* +\(C\)+ button and use the wizard to provide the appropriate S3 endpoint information and credentials.
 
 image::06-module-04-bnr-locationss.png[Back and Restore Locations ,link=self,window=blank,width=700,title="Back and Restore Locations"]
 
@@ -96,11 +96,11 @@ A backup policy is a set of rules and schedules that define how and when data is
 
 The Policies page lists all policies. You can search for policy records based on the backup location or other keywords, configure the table display, and perform actions like viewing, editing, or deleting policies from the ellipsis overflow menu.
 
-In the Fusion GUI, navigate to the Policies screen by clicking on the *Backup & restore* (A) menu item shown in the left-hand side navigation pane and selecting the *Policies* (B) sub-item. When the Policies screen is shown, click the *Add policy +* \(C\) button to configure a backup policy. 
+In the Fusion GUI, navigate to the Policies screen by clicking on the *Backup & restore* (A) menu item shown in the left-hand side navigation pane and selecting the *Policies* (B) sub-item. When the Policies screen is shown, click the *Add policy +* +\(C\)+ button to configure a backup policy. 
 
 image::06-module-04-bnr-policies.png[Back and Restore Policies,link=self,window=blank,width=700,title="Back and Restore Policies"]
 
-Enter `daily-snapshot` (A) in the *Policy Name* text entry field, set *Frequency* to *Daily* and specify a Time window for the backup to occur. Then, select the *In place snapshot* (B) Backup location tile. Finally, click the *Next* \(C\) button to create the new daily-snapshot backup policy.
+Enter `daily-snapshot` (A) in the *Policy Name* text entry field, set *Frequency* to *Daily* and specify a Time window for the backup to occur. Then, select the *In place snapshot* (B) Backup location tile. Finally, click the *Next* +\(C\)+ button to create the new daily-snapshot backup policy.
 
 image::06-module-04-bnr-policy-create.png[Back and Restore Policy Create,link=self,window=blank,width=700,title="Back and Restore Policy Create"]
 
@@ -108,7 +108,7 @@ The daily-snapshot policy will now appear in the list of backup policies. Next, 
 
 image::06-module-04-bnr-policy-new.png[Back and Restore Policy New,link=self,window=blank,width=700,title="Back and Restore Policy New"]
 
-(A) Enter `weekly-backup` in the *Policy name* text entry field, set *Frequency* to *weekly* (B), select *Sunday* \(C\) for *Schedule*, and specify a Time window for the backup to occur. Select the *Object Storage* (D) Backup location tile to pick the backup location `location1` (E). Click the *Create policy* (F) button to complete creation of the weekly-backup backup policy.
+(A) Enter `weekly-backup` in the *Policy name* text entry field, set *Frequency* to *weekly* (B), select *Sunday* +\(C\)+ for *Schedule*, and specify a Time window for the backup to occur. Select the *Object Storage* (D) Backup location tile to pick the backup location `location1` (E). Click the *Create policy* (F) button to complete creation of the weekly-backup backup policy.
 
 image::06-module-04-bnr-policy-weekly.png[Back and Restore Policy New Weekly,link=self,window=blank,width=700,title="Back and Restore Policy Weekly"]
 
@@ -130,7 +130,7 @@ In this section, you'll learn how to create a basic application to demonstrate c
 
 === Create a simple application
 
-In the OpenShift GUI, navigate to the *Projects* screen by clicking on the *Home* (A) menu item in the left-hand side navigation pane and selecting the *Projects* (B) sub-item. When the Projects screen is shown, click the *Create Project* \(C\) button.
+In the OpenShift GUI, navigate to the *Projects* screen by clicking on the *Home* (A) menu item in the left-hand side navigation pane and selecting the *Projects* (B) sub-item. When the Projects screen is shown, click the *Create Project* +\(C\)+ button.
 
 image::06-module-04-bnr-create-project.png[Create New Project,link=self,window=blank,width=700,title="Create New Project"]
 
@@ -369,13 +369,13 @@ The following information will be displayed listing all resources that were crea
 
 image::06-module-04-bnr-yaml-status.png[YAML Status,link=self,window=blank,width=700,title="YAML status"]
 
-Navigate to the Route screen by clicking on the *Network* (A) menu item shown in the left-hand side navigation pane and selecting the *Routes* (B) sub-item. When the Routes screen is shown, click the *URL Location* \(C\) for the filebrowser route to open a new tab/window to the filebrowser application
+Navigate to the Route screen by clicking on the *Network* (A) menu item shown in the left-hand side navigation pane and selecting the *Routes* (B) sub-item. When the Routes screen is shown, click the *URL Location* +\(C\)+ for the filebrowser route to open a new tab/window to the filebrowser application
 
 NOTE: It may take a minute or two for the filebrowser application to become fully online and accessible from the route screen
 
 image::06-module-04-bnr-routes.png[Routes,link=self,window=blank,width=700,title="Routes"]
 
-Login to the filebrowser application with *Username* (A): `admin` and *Password* (B): `admin`. Click the *Login* \(C\) button.
+Login to the filebrowser application with *Username* (A): `admin` and *Password* (B): `admin`. Click the *Login* +\(C\)+ button.
 
 image::06-module-04-bnr-filebrower-login.png[filebrowser login,link=self,window=blank,width=700,title="filebrowser login"]
 
@@ -407,7 +407,7 @@ Select the *filebrowser* application checkbox (A) and click the *Assign backup p
 
 image::06-module-04-bnr-assign-policy.png[Applications Assign Policy,link=self,window=blank,width=700,title="Applications Assign Policy"]
 
-Select both the *daily-snapshot* checkbox (A) and *weekly-backup* checkbox (B). Leave the Back up now toggle set to enabled (displayed with a green checkmark). Click the *Save* \(C\) button.
+Select both the *daily-snapshot* checkbox (A) and *weekly-backup* checkbox (B). Leave the Back up now toggle set to enabled (displayed with a green checkmark). Click the *Save* +\(C\)+ button.
 
 image::06-module-04-bnr-assign-policy2.png[Applications Assign Policy,link=self,window=blank,width=700,title="Applications Assign Policy"]
 
@@ -421,15 +421,15 @@ Navigate to the Backed up applications pane in the IBM Fusion UI by clicking *Ba
 
 If you want to find a specific namespace, you can use the search toolbar present on the page.
 
-You can assign a backup policy to a namespace by clicking *Protect apps +* \(C\) on the right side. This will launch the Protect applications wizard.
+You can assign a backup policy to a namespace by clicking *Protect apps +* +\(C\)+ on the right side. This will launch the Protect applications wizard.
 
 image::06-module-04-bnr-assign-policy2.png[Applications Assign Policy,link=self,window=blank,width=700,title="Applications Assign Policy"]
 
-The Protect applications wizard can be used to backup applications locally and in hub and spoke configurations. Select the *local cluster* (A) from the drop-down list, and a list of unprotected applications will populate in the list below. Next select, *filebrowser* (B) from the unprotected applications list. Finally click on the *Next* \(C\) button.
+The Protect applications wizard can be used to backup applications locally and in hub and spoke configurations. Select the *local cluster* (A) from the drop-down list, and a list of unprotected applications will populate in the list below. Next select, *filebrowser* (B) from the unprotected applications list. Finally click on the *Next* +\(C\)+ button.
 
 image::06-module-04-bnr-protect-wizard.png[Protect Wizard,link=self,window=blank,width=700,title="Protect Wizard"]
 
-On the Assign policies, you can select one or more policies to attach to the application and if backup should start right after applying the policies. Select both the *daily-snapshot* (A) and *weekly-backup* (B) policies. Leave the Back up now toggle set to enabled (displayed with a green checkmark). Click the *Assign* \(C\) button.
+On the Assign policies, you can select one or more policies to attach to the application and if backup should start right after applying the policies. Select both the *daily-snapshot* (A) and *weekly-backup* (B) policies. Leave the Back up now toggle set to enabled (displayed with a green checkmark). Click the *Assign* +\(C\)+ button.
 
 image::06-module-04-bnr-protect-wizard2.png[Protect Wizard,link=self,window=blank,width=700,title="Protect Wizard"]
 
@@ -469,7 +469,7 @@ The wizard presents the choice to restore to the same cluster or to a different 
 
 image::06-module-04-bnr-restore-wizard.png[Restoring Application Wizard,link=self,window=blank,width=700,title="Restoring Application Wizard"]
 
-The restore wizard also provides a choice to restore over the same project, an existing project, or to a new project. Select *Create a new project* (A) and (B) enter `filebrowser2` in the Project name text entry field. Then, click on the *Next* \(C\) button to select the backup to restore. 
+The restore wizard also provides a choice to restore over the same project, an existing project, or to a new project. Select *Create a new project* (A) and (B) enter `filebrowser2` in the Project name text entry field. Then, click on the *Next* +\(C\)+ button to select the backup to restore. 
 
 image::06-module-04-bnr-restore-project.png[Restoring Application Project,link=self,window=blank,width=700,title="Restoring Application Project"]
 
@@ -489,7 +489,7 @@ Watch the restore progress on the *Backups* tab. Item (A) is the Restore job tha
 
 image::06-module-04-bnr-restore-progress.png[Restoring Application Progress,link=self,window=blank,width=700,title="Restoring Application Progress"]
 
-In the OpenShift Console, navigate to the Pods page by clicking on the *Workloads* (A) menu item shown in the left-hand side navigation pane and selecting the *Pods* (B) sub-item. Then click the *project selector* \(C\) and choose `filebrowser2` (D) from the projects drop down menu. Refer to section OpenShift project selector on how to use the project selector.
+In the OpenShift Console, navigate to the Pods page by clicking on the *Workloads* (A) menu item shown in the left-hand side navigation pane and selecting the *Pods* (B) sub-item. Then click the *project selector* +\(C\)+ and choose `filebrowser2` (D) from the projects drop down menu. Refer to section OpenShift project selector on how to use the project selector.
 
 image::06-module-04-bnr-restore-project2.png[Restoring Application Project,link=self,window=blank,width=700,title="Restoring Application Project"]
 
@@ -505,7 +505,7 @@ Navigate to the Routes screen by clicking on the *Networking* (A) menu item show
 
 image::06-module-04-bnr-restore-routes.png[Restoring Application Routes,link=self,window=blank,width=700,title="Restoring Application Routes"]
 
-Login to the filebrowser application with the *Username* (A): `admin` and *Password* (B): `admin`. Click *Login* \(C\). Review that the files added earlier have been restored to a new application project
+Login to the filebrowser application with the *Username* (A): `admin` and *Password* (B): `admin`. Click *Login* +\(C\)+. Review that the files added earlier have been restored to a new application project
 
 image::06-module-04-bnr-application.png[Restoring Application,link=self,window=blank,width=700,title="Restoring Application"]
 
@@ -525,7 +525,7 @@ Create a new Virtual Machine from the Catalog using the Red Hat Enterprise Linux
 
 Launch the Fusion User Interface by clicking the Application menu icon (looks like 9 squares) and then click IBM Storage Fusion. If prompted, enter kubeadmin and your kubeadmin password from the reservation.
 
-Navigate to the Applications screen by clicking on the Applications (A) menu item on the left-hand side navigation pane. Select the check box (B) next to vmbackup application and click on the Assign backup policy \(C\) button to open the Assign backup policy page.
+Navigate to the Applications screen by clicking on the Applications (A) menu item on the left-hand side navigation pane. Select the check box (B) next to vmbackup application and click on the Assign backup policy +\(C\)+ button to open the Assign backup policy page.
 
 image::06-module-04-bnr-vm-backup-policy.png[VM Back up Policy,link=self,window=blank,width=700,title="VM Backup Policy"]
 
@@ -537,7 +537,7 @@ Wait for backup to show as Completed under Backup status.
 
 image::06-module-04-bnr-vm-backup-complete.png[VM Backup Complete,link=self,window=blank,width=700,title="VM Backup Complete"]
 
-Navigate to the Jobs screen by clicking on the Backup & restore (A) menu item on the left-hand side navigation pane and selecting the Jobs (B) menu sub-item. Click on the vmbackup-weekly-backup-<OCP cluster name> \(C\) button to open the backup summary page.
+Navigate to the Jobs screen by clicking on the Backup & restore (A) menu item on the left-hand side navigation pane and selecting the Jobs (B) menu sub-item. Click on the vmbackup-weekly-backup-<OCP cluster name> +\(C\)+ button to open the backup summary page.
 
 image::06-module-04-bnr-vm-backup-jobs.png[VM Backup Jobs,link=self,window=blank,width=700,title="VM Backup Jobs"]
 
@@ -547,7 +547,7 @@ image::06-module-04-bnr-vm-backup-summary.png[VM Backup Summary,link=self,window
 
 === Restore Virtual Machine
 
-Navigate to the Backed up applications screen by clicking on the Backup & restore (A) menu item on the left-hand side navigation pane and selecting the Backed up applications (B) menu sub-item. Click on the vmbackup \(C\) application name to open the vmbackup backup details page.
+Navigate to the Backed up applications screen by clicking on the Backup & restore (A) menu item on the left-hand side navigation pane and selecting the Backed up applications (B) menu sub-item. Click on the vmbackup +\(C\)+ application name to open the vmbackup backup details page.
 
 image::06-module-04-bnr-vm-backed-apps.png[VM Backed up Applications,link=self,window=blank,width=700,title="VM Backed up Applications"]
 
@@ -559,7 +559,7 @@ The wizard presents the choice to restore to the same cluster or to a different 
 
 image::06-module-04-bnr-vm-restore-select-dest.png[VM Select Destination,link=self,window=blank,width=700,title="VM Restore select destination"]
 
-Click on the Create a new project (A) combo box to change the Project destination. Enter vmrestore in the Project name (B) text entry field and click the Next \(C\) button to continue the restore process.
+Click on the Create a new project (A) combo box to change the Project destination. Enter vmrestore in the Project name (B) text entry field and click the Next +\(C\)+ button to continue the restore process.
 
 image::06-module-04-bnr-vm-restore-project.png[VM Restore Project,link=self,window=blank,width=700,title="VM Restore Project"]
 
@@ -583,7 +583,7 @@ Wait for the restore backup job to show Completed.
 
 image::06-module-04-bnr-vm-restore-complete.png[VM Restore Complete,link=self,window=blank,width=700,title="VM Restore Complete"]
 
-Return to the OpenShift GUI. Navigate to the VirtualMachines screen by clicking on the Virtualization (A) menu item on the left-hand side navigation pane and selecting the VirtualMachines (B) sub-item. Use the Project selector to change to the vmrestore \(C\) project. Notice that the VirtualMachine has been restored to a new namespace and is in a Running Status.
+Return to the OpenShift GUI. Navigate to the VirtualMachines screen by clicking on the Virtualization (A) menu item on the left-hand side navigation pane and selecting the VirtualMachines (B) sub-item. Use the Project selector to change to the vmrestore +\(C\)+ project. Notice that the VirtualMachine has been restored to a new namespace and is in a Running Status.
 
 image::06-module-04-bnr-vm-list-restored.png[List Restored VM,link=self,window=blank,width=700,title="List Restored VM"]
 
@@ -614,7 +614,7 @@ With application consistency, it’s possible to restore an application to anoth
 Application consistent backups are important because they ensure that important files and data are saved in a way that keeps them safe and undamaged. This means that if something goes wrong, like a computer crash or a power outage, clients can restore their files and data to the way they were before the event, without losing any important information.
 ****
 
-In the OpenShift GUI, navigate to the Projects screen by clicking on the Home (A) menu item in the left-hand side navigation pane and selecting the Projects (B) sub-item. When the Projects screen is shown, click on the Create Project \(C\) button.
+In the OpenShift GUI, navigate to the Projects screen by clicking on the Home (A) menu item in the left-hand side navigation pane and selecting the Projects (B) sub-item. When the Projects screen is shown, click on the Create Project +\(C\)+ button.
 
 image::06-module-04-bnr-create-pm-project.png[create pacman project,link=self,window=blank,width=700,title="Create PacMan Project"]
 
@@ -762,11 +762,11 @@ Navigate back to the OpenShift GUI and use Ctrl-V (windows), CMD-V (Mac) or the 
 
 image::06-module-04-bnr-create-recipe.png[Create Recipe,link=self,window=blank,width=700,title="Create recipe"]
 
-In the Fusion GUI, navigate to the Applications screen by clicking on the Applications (A) menu item shown in the left-hand side navigation pane. When the Applications screen is shown, select the pacman checkbox (B) and click on the Assign backup policy \(C\) button.
+In the Fusion GUI, navigate to the Applications screen by clicking on the Applications (A) menu item shown in the left-hand side navigation pane. When the Applications screen is shown, select the pacman checkbox (B) and click on the Assign backup policy +\(C\)+ button.
 
 image::06-module-04-bnr-assign-policy3.png[Assign Policy,link=self,window=blank,width=700,title="Assign policy"]
 
-Select the weekly-backup policy (A) and use the Backup up now (B) toggle to disable the initial backup (shown as gray when disabled). Click the Save \(C\) button.
+Select the weekly-backup policy (A) and use the Backup up now (B) toggle to disable the initial backup (shown as gray when disabled). Click the Save +\(C\)+ button.
 
 NOTE: IMPORTANT. Set the Backup up now option to disabled (indicated by the absence of a green checkmark) to prevent an initial backup. The Pacman application does not generate sufficient changes in the MongoDB database and performing an initial backup without the appropriate recipe may result in restore failures when using Change Block Tracking (CBT).
 
@@ -780,7 +780,7 @@ In the OpenShift GUI, navigate to the Search screen by clicking on the Home (A) 
 
 image::06-module-04-bnr-policy-search.png[Search,link=self,window=blank,width=700,title="Search"]
 
-Change to the ibm-spectrum-fusion-ns project, if not already there. Refer to section OpenShift project selector on how to use the project selector. Open the drop-down list associated with the `Resources` (A) field and (B) enter policyassignment in the search box text entry field (displayed with a magnifying glass). Select the PolicyAssignment \(C\). Click anywhere outside the drop-down list to dismiss the window.
+Change to the ibm-spectrum-fusion-ns project, if not already there. Refer to section OpenShift project selector on how to use the project selector. Open the drop-down list associated with the `Resources` (A) field and (B) enter policyassignment in the search box text entry field (displayed with a magnifying glass). Select the PolicyAssignment +\(C\)+. Click anywhere outside the drop-down list to dismiss the window.
 
 image::06-module-04-bnr-project-selector.png[Project Selector,link=self,window=blank,width=700,title="Project Selector"]
 
@@ -821,7 +821,7 @@ Click the Save (A) button after the 4 new lines have been added.
 
 image::06-module-04-bnr-policy-save-yaml.png[Policy Save YAML,link=self,window=blank,width=700,title="Policy Save YAML"]
 
-Change to the pacman project using the Project selector if necessary. Refer to section OpenShift project selector on how to use the project selector. Navigate to the Pods screen by clicking on the Workload (A) menu item shown in the left-hand side navigation pane and selecting the Pods (B) sub-item. Click on the mongodb-XXXXXXXXXX-YYYYY pod \(C\) to open the pod details page.
+Change to the pacman project using the Project selector if necessary. Refer to section OpenShift project selector on how to use the project selector. Navigate to the Pods screen by clicking on the Workload (A) menu item shown in the left-hand side navigation pane and selecting the Pods (B) sub-item. Click on the mongodb-XXXXXXXXXX-YYYYY pod +\(C\)+ to open the pod details page.
 
 image::06-module-04-bnr-pacman-project-yaml.png[Pacman Project,link=self,window=blank,width=700,title="Pacman project"]
 
@@ -829,7 +829,7 @@ Click the Logs (A) tab and select Wrap lines (B) to improve readability. Scroll 
 
 image::06-module-04-bnr-pacman-logs-yaml.png[Pacman Logs,link=self,window=blank,width=700,title="Pacman logs"]
 
-In the Fusion GUI, navigate to the Applications page by clicking on the Applications (A) menu item shown in the left-hand side navigation pane. When the Application screen is shown, select the pacman application (B) checkbox and click on the Back up now \(C\) button. 
+In the Fusion GUI, navigate to the Applications page by clicking on the Applications (A) menu item shown in the left-hand side navigation pane. When the Application screen is shown, select the pacman application (B) checkbox and click on the Back up now +\(C\)+ button. 
 
 image::06-module-04-bnr-backup-now-yaml.png[Backup Now,link=self,window=blank,width=700,title="backup now"]
 
@@ -837,7 +837,7 @@ Click on the Back up (A) button.
 
 image::06-module-04-bnr-backup-now-button.png[Backup Now Button,link=self,window=blank,width=700,title="backup now button"]
 
-Navigate to the Jobs screen by clicking on the Backup & restore (A) menu item shown in the left-hand side navigation pane and selecting the Jobs (B) sub-item. When the Jobs screen is shown, click on the pacman-weekly-backup-<cluster name> job \(C\) to open the job details page.
+Navigate to the Jobs screen by clicking on the Backup & restore (A) menu item shown in the left-hand side navigation pane and selecting the Jobs (B) sub-item. When the Jobs screen is shown, click on the pacman-weekly-backup-<cluster name> job +\(C\)+ to open the job details page.
 
 image::06-module-04-bnr-backup-jobs.png[Backup Jobs,link=self,window=blank,width=700,title="backup jobs"]
 
@@ -897,7 +897,7 @@ Click the Define schedule (A) button to configure a schedule for service protect
 
 image::06-module-04-bnr-service-schedule.png[Service Protection Schedule,link=self,window=blank,width=700,title="Service Protection Schedule"]
 
-Select Weekly (A) under the Select frequency item, select Sunday (B) from the Schedule item, and select a Start time, End time, and Timezone \(C\) under the Time window item. Click the Create policy (D) button. Leave Initiate Service backup now selected.
+Select Weekly (A) under the Select frequency item, select Sunday (B) from the Schedule item, and select a Start time, End time, and Timezone +\(C\)+ under the Time window item. Click the Create policy (D) button. Leave Initiate Service backup now selected.
 
 image::06-module-04-bnr-service-set-schedule.png[Service Protection Set Schedule,link=self,window=blank,width=700,title="Service Protection Set Schedule"]
 
