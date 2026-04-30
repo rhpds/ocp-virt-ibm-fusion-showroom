@@ -518,25 +518,25 @@ image::06-module-04-bnr-application.png[Restoring Application,link=self,window=b
 
 === Backup a Virtual Machine
 
-In the Administrative View, create a new project called "vmbackup"
+In the *Administrative* view, create a new project called `vmbackup`
 
-Create a new Virtual Machine from the Catalog using the Red Hat Enterprise Linux 9 VM template. Use the name rhel9-backup.
+Navigate to *Virtualization* -> *Catalog*. Create a new Virtual Machine using the *Red Hat Enterprise Linux 9* VM template. Use the name `rhel9-backup`.
 
-Launch the Fusion User Interface by clicking the Application menu icon (looks like 9 squares) and then click IBM Storage Fusion. If prompted, enter kubeadmin and your kubeadmin password from the reservation.
+Switch to the *IBM Fusion* tab.
 
-Navigate to the Applications screen by clicking on the Applications (A) menu item on the left-hand side navigation pane. Select the check box (B) next to vmbackup application and click on the Assign backup policy +(C)+ button to open the Assign backup policy page.
+Navigate to the Applications screen by clicking on the Applications (A) menu item on the left-hand side navigation pane. Select the check box (B) next to `vmbackup` application and click on the *Assign backup policy* +(C)+ button to open the Assign backup policy page.
 
 image::06-module-04-bnr-vm-backup-policy.png[VM Back up Policy,link=self,window=blank,width=700,title="VM Backup Policy"]
 
-Select the check box (A) next to weekly-backup and leave the Back up now toggle set to enabled (green with a checkmark for enabled). Click on the Save (B) button to enable the weekly-backup policy for the vmbackup application and start a new backup job. 
+Select the check box (A) next to `weekly-backup` and leave the *Back up now* toggle set to `enabled` (green with a checkmark for enabled). Click on the *Save* (B) button to enable the weekly-backup policy for the vmbackup application and start a new backup job. 
 
 image::06-module-04-bnr-vm-backup-set-policy.png[VM Set backup policy,link=self,window=blank,width=700,title="VM Set backup policy"]
 
-Wait for backup to show as Completed under Backup status. 
+Wait for backup to show as *Completed* under *Backup status*. 
 
 image::06-module-04-bnr-vm-backup-complete.png[VM Backup Complete,link=self,window=blank,width=700,title="VM Backup Complete"]
 
-Navigate to the Jobs screen by clicking on the Backup & restore (A) menu item on the left-hand side navigation pane and selecting the Jobs (B) menu sub-item. Click on the vmbackup-weekly-backup-<OCP cluster name> +(C)+ button to open the backup summary page.
+Navigate to the *Jobs* screen by clicking on the *Backup & restore* (A) menu item on the left-hand side navigation pane and selecting the *Jobs* (B) menu sub-item. Click on the `vmbackup-weekly-backup-<OCP cluster name>` +(C)+ button to open the backup summary page.
 
 image::06-module-04-bnr-vm-backup-jobs.png[VM Backup Jobs,link=self,window=blank,width=700,title="VM Backup Jobs"]
 
@@ -546,43 +546,43 @@ image::06-module-04-bnr-vm-backup-summary.png[VM Backup Summary,link=self,window
 
 === Restore Virtual Machine
 
-Navigate to the Backed up applications screen by clicking on the Backup & restore (A) menu item on the left-hand side navigation pane and selecting the Backed up applications (B) menu sub-item. Click on the vmbackup +(C)+ application name to open the vmbackup backup details page.
+Navigate to the Backed up applications screen by clicking on the *Backup & restore* (A) menu item on the left-hand side navigation pane and selecting the *Backed up applications* (B) menu sub-item. Click on the `vmbackup` +(C)+ application name to open the vmbackup backup details page.
 
 image::06-module-04-bnr-vm-backed-apps.png[VM Backed up Applications,link=self,window=blank,width=700,title="VM Backed up Applications"]
 
-Click on the Restore (A) button to begin the restore process.
+Click on the *Restore* (A) button to begin the restore process.
 
 image::06-module-04-bnr-vm-restore.png[VM Restore,link=self,window=blank,width=700,title="VM Restore"]
 
-The wizard presents the choice to restore to the same cluster or to a different cluster, if you have a hub-spoke setup. Open the drop-down list associated with the “Target cluster” field and select the This cluster (A) item from the list.
+The wizard presents the choice to restore to the same cluster or to a different cluster, if you have a hub-spoke setup. Open the drop-down list associated with the *Target cluster* field and select *This cluster* (A) from the list.
 
 image::06-module-04-bnr-vm-restore-select-dest.png[VM Select Destination,link=self,window=blank,width=700,title="VM Restore select destination"]
 
-Click on the Create a new project (A) combo box to change the Project destination. Enter vmrestore in the Project name (B) text entry field and click the Next +(C)+ button to continue the restore process.
+Click on the *Create a new project* (A) combo box to change the Project destination. Enter `vmrestore` in the *Project name* (B) text entry field and click the *Next* +(C)+ button to continue the restore process.
 
 image::06-module-04-bnr-vm-restore-project.png[VM Restore Project,link=self,window=blank,width=700,title="VM Restore Project"]
 
-Click on the latest backup time (A) combo box (which should be the backup that was run in the previous section). Click the Next (B) button to continue to the final step of the restore process.
+Click on the *latest backup time* (A) combo box (which should be the backup that was run in the previous section). Click the *Next* (B) button to continue to the final step of the restore process.
 
 image::06-module-04-bnr-vm-restore-select.png[VM Restore Select,link=self,window=blank,width=700,title="VM Restore Select"]
 
-Review the Summary (A) details for OpenShift Project and Restore point for accuracy. Click the Restore (B) button.
+Review the *Summary* (A) details for OpenShift Project and Restore point for accuracy. Click the *Restore* (B) button.
 
 image::06-module-04-bnr-vm-restore-button.png[VM Restore Button,link=self,window=blank,width=700,title="VM Restore Button"]
 
-Click the Restore (A) button again to confirm the start of the restore process.
+Click the *Restore* (A) button again to confirm the start of the restore process.
 
 image::06-module-04-bnr-vm-confirm-restore.png[VM Confirm Restore,link=self,window=blank,width=700,title="VM Comfirm Restore"]
 
-Click on the View job details (A) button to open the vmbackup restore details page.
+Click on the *View job details* (A) button to open the `vmbackup` restore details page.
 
 image::06-module-04-bnr-vm-job-details.png[VM Job Details,link=self,window=blank,width=700,title="VM Job Details"]
 
-Wait for the restore backup job to show Completed. 
+Wait for the restore backup job to show *Completed*. 
 
 image::06-module-04-bnr-vm-restore-complete.png[VM Restore Complete,link=self,window=blank,width=700,title="VM Restore Complete"]
 
-Return to the OpenShift GUI. Navigate to the VirtualMachines screen by clicking on the Virtualization (A) menu item on the left-hand side navigation pane and selecting the VirtualMachines (B) sub-item. Use the Project selector to change to the vmrestore +(C)+ project. Notice that the VirtualMachine has been restored to a new namespace and is in a Running Status.
+Return to the *OpenShift Console* tab. Navigate to the *VirtualMachines* screen by clicking on the *Virtualization* (A) menu item on the left-hand side navigation pane and selecting the *VirtualMachines* (B) sub-item. Use the *Project selector* to change to the `vmrestore` +(C)+ project. Notice that the VirtualMachine has been restored to a new namespace and is in a Running Status.
 
 image::06-module-04-bnr-vm-list-restored.png[List Restored VM,link=self,window=blank,width=700,title="List Restored VM"]
 
@@ -597,7 +597,7 @@ image::06-module-04-bnr-vm-list-restored.png[List Restored VM,link=self,window=b
 === Create an application with Fusion recipe
 
 When you protect an application with Backup & Restore service, a default backup and restore workflow is used to protect an application. But while the backup and restore workflow is sufficient for some applications, there are some instances where you need to create a custom workflow for the backup and restore process to produce an application consistent backup. Recipes are used to create a custom workflow for the backup and restore process.
- 
+
 ****
 Types of consistency:
 
@@ -613,7 +613,7 @@ With application consistency, it’s possible to restore an application to anoth
 Application consistent backups are important because they ensure that important files and data are saved in a way that keeps them safe and undamaged. This means that if something goes wrong, like a computer crash or a power outage, clients can restore their files and data to the way they were before the event, without losing any important information.
 ****
 
-In the OpenShift GUI, navigate to the Projects screen by clicking on the Home (A) menu item in the left-hand side navigation pane and selecting the Projects (B) sub-item. When the Projects screen is shown, click on the Create Project +(C)+ button.
+In the *OpenShift Console* tab, navigate to the *Projects* screen by clicking on the *Home* (A) menu item in the left-hand side navigation pane and selecting the *Projects* (B) sub-item. When the Projects screen is shown, click on the *Create Project* +(C)+ button.
 
 image::06-module-04-bnr-create-pm-project.png[create pacman project,link=self,window=blank,width=700,title="Create PacMan Project"]
 
@@ -623,8 +623,9 @@ image::06-module-04-bnr-create-pm-project-yaml.png[create pacman project,link=se
 
 Use the following YAML file to create the PacMan Application in the `pacman` namespace.
 
-[source,yaml]
+[source,yaml,role=execute]
 ----
+---
 kind: PersistentVolumeClaim
 apiVersion: v1
 metadata:
@@ -638,7 +639,6 @@ spec:
       storage: 8Gi
 
 ---
-
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -672,7 +672,6 @@ spec:
             claimName: mongo-storage
 
 ---
-
 apiVersion: v1
 kind: Service
 metadata:
@@ -688,7 +687,6 @@ spec:
     name: mongodb
 
 ---
-
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -715,10 +713,8 @@ spec:
       - name: db-check
         image: busybox:latest
         command: ['sh', '-c', 'echo -e "Checking for the availability of MongoDB Server deployment"; while ! nc -z mongo 27017; do sleep 1; printf "-"; done; echo -e "  >> MongoDB Server has started";']
- 
 
 ---
-
 apiVersion: v1
 kind: Service
 metadata:
@@ -735,7 +731,6 @@ spec:
     name: pacman
 
 ---
-
 apiVersion: route.openshift.io/v1
 kind: Route
 metadata:
@@ -753,21 +748,21 @@ spec:
   wildcardPolicy: None
 ----
 
-Click the Import YAML (A) (the icon that looks like a + sign) button on the OpenShift GUI masthead.
+Click the *Import YAML* (A) (the icon that looks like a + sign) button on the OpenShift Console masthead.
 
 image::06-module-04-bnr-import-yaml.png[Import YAML,link=self,window=blank,width=700,title="Import YAML"]
 
-Navigate back to the OpenShift GUI and use Ctrl-V (windows), CMD-V (Mac) or the browser Edit -> Paste function to paste the contents of the clipboard into the editor (A) text entry field. Click the Create (B) button to create the recipe.
+In the *OpenShift Console* tab use `Ctrl-V` (windows), `CMD-V` (Mac) or the browser `Edit` -> `Paste` function to paste the contents of the clipboard into the editor (A) text entry field. Click the *Create* (B) button to create the recipe.
 
 image::06-module-04-bnr-create-recipe.png[Create Recipe,link=self,window=blank,width=700,title="Create recipe"]
 
-In the Fusion GUI, navigate to the Applications screen by clicking on the Applications (A) menu item shown in the left-hand side navigation pane. When the Applications screen is shown, select the pacman checkbox (B) and click on the Assign backup policy +(C)+ button.
+In the *IBM Fusion* tab, navigate to the Applications screen by clicking on the *Applications* (A) menu item shown in the left-hand side navigation pane. When the Applications screen is shown, select the *pacman* checkbox (B) and click on the *Assign backup policy* +(C)+ button.
 
 image::06-module-04-bnr-assign-policy3.png[Assign Policy,link=self,window=blank,width=700,title="Assign policy"]
 
-Select the weekly-backup policy (A) and use the Backup up now (B) toggle to disable the initial backup (shown as gray when disabled). Click the Save +(C)+ button.
+Select the *weekly-backup policy* (A) and use the *Backup up now* (B) toggle to *disable* the initial backup (shown as gray when disabled). Click the *Save* +(C)+ button.
 
-NOTE: IMPORTANT. Set the Backup up now option to disabled (indicated by the absence of a green checkmark) to prevent an initial backup. The Pacman application does not generate sufficient changes in the MongoDB database and performing an initial backup without the appropriate recipe may result in restore failures when using Change Block Tracking (CBT).
+IMPORTANT: Set the Backup up now option to *disabled* (indicated by the absence of a green checkmark) to prevent an initial backup. The Pacman application does not generate sufficient changes in the MongoDB database and performing an initial backup without the appropriate recipe may result in restore failures when using Change Block Tracking (CBT).
 
 image::06-module-04-bnr-set-policy.png[Set Policy,link=self,window=blank,width=700,title="Set policy"]
 
@@ -775,19 +770,19 @@ The Pacman application is now associated with the weekly-backup policy.
 
 image::06-module-04-bnr-policy-associated.png[Policy Associated,link=self,window=blank,width=700,title="Policy Associated"]
 
-In the OpenShift GUI, navigate to the Search screen by clicking on the Home (A) menu item shown in the left-hand side navigation pane and selecting the Search (B) sub-item.
+In the *OpenShift Console* tab, navigate to the Search screen by clicking on the *Home* (A) menu item shown in the left-hand side navigation pane and selecting the *Search* (B) sub-item.
 
 image::06-module-04-bnr-policy-search.png[Search,link=self,window=blank,width=700,title="Search"]
 
-Change to the ibm-spectrum-fusion-ns project, if not already there. Refer to section OpenShift project selector on how to use the project selector. Open the drop-down list associated with the `Resources` (A) field and (B) enter policyassignment in the search box text entry field (displayed with a magnifying glass). Select the PolicyAssignment +(C)+. Click anywhere outside the drop-down list to dismiss the window.
+Change to the `ibm-spectrum-fusion-ns` project, if not already there. Refer to section OpenShift project selector on how to use the project selector. Open the drop-down list associated with the *Resources* (A) field and (B) enter `policyassignment` in the search box text entry field (displayed with a magnifying glass). Select the *PolicyAssignment* +(C)+. Click anywhere outside the drop-down list to dismiss the window.
 
 image::06-module-04-bnr-project-selector.png[Project Selector,link=self,window=blank,width=700,title="Project Selector"]
 
-Click on the PolicyAssignment associated with the pacman application that was just created. The syntax for the policy is, <application>-<backup policy>-<backup cluster name>. In the example shown here, the PolicyAssignment name is pacman-weekly-backup-apps.66d86bd0694f19a4a8b069f1.ocp.techzone.ibm.com.
+Click on the *PolicyAssignment* associated with the pacman application that was just created. The syntax for the policy is, `<application>-<backup policy>-<backup cluster name>`. In the example shown here, the PolicyAssignment name is pacman-weekly-backup-apps.66d86bd0694f19a4a8b069f1.ocp.techzone.ibm.com.
 
 image::06-module-04-bnr-policy-assignment.png[Policy Assignment,link=self,window=blank,width=700,title="Policy Assignment"]
 
-Click the YAML (A) tab.
+Click the *YAML* (A) tab.
 
 image::06-module-04-bnr-policy-assignment-yaml.png[Policy Assignment YAML,link=self,window=blank,width=700,title="Policy Assignment YAML"]
 
@@ -816,27 +811,27 @@ NOTE: for readability the metadata and status information have been collapsed us
     name: mongodb-image-based-backup-restore-recipe
     namespace: ibm-spectrum-fusion-ns
 ----
-Click the Save (A) button after the 4 new lines have been added.
+Click the *Save* (A) button after the 4 new lines have been added.
 
 image::06-module-04-bnr-policy-save-yaml.png[Policy Save YAML,link=self,window=blank,width=700,title="Policy Save YAML"]
 
-Change to the pacman project using the Project selector if necessary. Refer to section OpenShift project selector on how to use the project selector. Navigate to the Pods screen by clicking on the Workload (A) menu item shown in the left-hand side navigation pane and selecting the Pods (B) sub-item. Click on the mongodb-XXXXXXXXXX-YYYYY pod +(C)+ to open the pod details page.
+Change to the *pacman* project using the Project selector if necessary. Refer to section OpenShift project selector on how to use the project selector. Navigate to the Pods screen by clicking on the *Workload* (A) menu item shown in the left-hand side navigation pane and selecting the *Pods* (B) sub-item. Click on the `mongodb-XXXXXXXXXX-YYYYY` pod +(C)+ to open the pod details page.
 
 image::06-module-04-bnr-pacman-project-yaml.png[Pacman Project,link=self,window=blank,width=700,title="Pacman project"]
 
-Click the Logs (A) tab and select Wrap lines (B) to improve readability. Scroll to the bottom of the logs if necessary. Leave this window open for now as we will return to it after a new backup has been run using the updated PolicyAssignment with the newly attached recipe.
+Click the *Logs* (A) tab and select *Wrap lines* (B) to improve readability. Scroll to the bottom of the logs if necessary. Leave this window open for now as we will return to it after a new backup has been run using the updated PolicyAssignment with the newly attached recipe.
 
 image::06-module-04-bnr-pacman-logs-yaml.png[Pacman Logs,link=self,window=blank,width=700,title="Pacman logs"]
 
-In the Fusion GUI, navigate to the Applications page by clicking on the Applications (A) menu item shown in the left-hand side navigation pane. When the Application screen is shown, select the pacman application (B) checkbox and click on the Back up now +(C)+ button. 
+In the *IBM Fusion* tab, navigate to the Applications page by clicking on the *Applications* (A) menu item shown in the left-hand side navigation pane. When the Application screen is shown, select the `pacman` application (B) checkbox and click on the *Back up now* +(C)+ button. 
 
 image::06-module-04-bnr-backup-now-yaml.png[Backup Now,link=self,window=blank,width=700,title="backup now"]
 
-Click on the Back up (A) button.
+Click on the *Back up* (A) button.
 
 image::06-module-04-bnr-backup-now-button.png[Backup Now Button,link=self,window=blank,width=700,title="backup now button"]
 
-Navigate to the Jobs screen by clicking on the Backup & restore (A) menu item shown in the left-hand side navigation pane and selecting the Jobs (B) sub-item. When the Jobs screen is shown, click on the pacman-weekly-backup-<cluster name> job +(C)+ to open the job details page.
+Navigate to the Jobs screen by clicking on the *Backup & restore* (A) menu item shown in the left-hand side navigation pane and selecting the *Jobs* (B) sub-item. When the Jobs screen is shown, click on the `pacman-weekly-backup-<cluster name>` job +(C)+ to open the job details page.
 
 image::06-module-04-bnr-backup-jobs.png[Backup Jobs,link=self,window=blank,width=700,title="backup jobs"]
 
@@ -844,11 +839,11 @@ Verify that the Backup sequence includes hooks provided in the backup recipe by 
 
 image::06-module-04-bnr-backup-seq.png[Backup Sequence,link=self,window=blank,width=700,title="backup sequence"]
 
-Additional details can be displayed by selecting the Log view on the Backup Jobs page.
+Additional details can be displayed by selecting the *Log view* on the Backup Jobs page.
 
 image::06-module-04-bnr-log-view.png[Backup Log View,link=self,window=blank,width=700,title="backup log view"]
 
-In the OpenShift GUI, navigate back to the mongodb Pod logs and look for the fsyncLock command to be executed. You may need to scroll back to find the COMMAND being run.
+In the *OpenShift Console* tab, navigate back to the mongodb Pod logs and look for the fsyncLock command to be executed. You may need to scroll back to find the COMMAND being run.
 
 image::06-module-04-bnr-mongo-logs1.png[Mongo Logs,link=self,window=blank,width=700,title="Mongo logs view"]
 
@@ -872,31 +867,31 @@ Service protection is just for backup/restore on the hub cluster and not for oth
 
 NOTE: To follow this section, create a new object bucket claim, as was done in the backup location section and use the new bucket claim info service protection.
 
-In the Fusion GUI, navigate to the Service protection page by clicking on the Backup & restore (A) menu item shown in the left-hand side navigation pane and selecting Service protection (B) sub-item.
+In the *IBM Fusion* tab, navigate to the Service protection page by clicking on the *Backup & restore* (A) menu item shown in the left-hand side navigation pane and selecting *Service protection* (B) sub-item.
 
 image::06-module-04-bnr-service-protection.png[Service Protection,link=self,window=blank,width=700,title="Service Protection"]
 
-Click on the Configure service backups (A) tile.
+Click on the *Configure service backups* (A) tile.
 
 image::06-module-04-bnr-service-protection-backups.png[Service Protection Backups,link=self,window=blank,width=700,title="Service Protection Backups"]
 
-Click on the S3 Compliant tile in the Choose an object storage type wizard step and click the Next button.
+Click on the *S3 Compliant* tile in the Choose an object storage type wizard step and click the *Next* button.
 
 image::06-module-04-bnr-add-location.png[Add Backup Location,link=self,window=blank,width=700,title="Add Location"]
 
-Enter the S3 endpoint and connection information, from the noobaa bucket claim you created.  
+Enter the S3 endpoint and connection information, from the object bucket claim you created.  
 
 image::06-module-04-bnr-add-location2.png[Add Backup Location,link=self,window=blank,width=700,title="Add Location"]
 
-An Adding backup location, Location service-protection-location is being added message will appear in the upper-right corner of the Fusion GUI.
+An `Adding backup location, Location service-protection-location is being added` message will appear in the upper-right corner of the IBM Fusion tab.
 
 image::06-module-04-bnr-service-protection-location.png[Service Protection Location,link=self,window=blank,width=700,title="Service Protection Location"]
 
-Click the Define schedule (A) button to configure a schedule for service protection.
+Click the *Define schedule* (A) button to configure a schedule for service protection.
 
 image::06-module-04-bnr-service-schedule.png[Service Protection Schedule,link=self,window=blank,width=700,title="Service Protection Schedule"]
 
-Select Weekly (A) under the Select frequency item, select Sunday (B) from the Schedule item, and select a Start time, End time, and Timezone +(C)+ under the Time window item. Click the Create policy (D) button. Leave Initiate Service backup now selected.
+Select *Weekly* (A) under the *Select frequency* item, select *Sunday* (B) from the *Schedule* item, and select a *Start time*, *End time*, and *Timezone* +(C)+ under the *Time window* item. Click the *Create policy* (D) button. Leave *Initiate Service backup now* selected.
 
 image::06-module-04-bnr-service-set-schedule.png[Service Protection Set Schedule,link=self,window=blank,width=700,title="Service Protection Set Schedule"]
 
